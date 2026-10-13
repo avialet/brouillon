@@ -15,12 +15,13 @@ enum Migrations {
                 t.primaryKey("key", .text)
                 t.column("value", .text).notNull()
             }
-            // Tables de l'app : a ajouter ici, par exemple
-            // try db.create(table: "item") { t in
-            //     t.autoIncrementedPrimaryKey("id")
-            //     t.column("createdAt", .datetime).notNull()
-            //     t.column("title", .text).notNull()
-            // }
+            try db.create(table: "draft") { t in
+                t.primaryKey("id", .text)
+                t.column("text", .text).notNull()
+                t.column("title", .text).notNull().defaults(to: "")
+                t.column("createdAt", .datetime).notNull()
+                t.column("updatedAt", .datetime).notNull()
+            }
         }
 
         return m
