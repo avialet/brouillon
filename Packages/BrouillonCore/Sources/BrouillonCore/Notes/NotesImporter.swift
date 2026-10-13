@@ -59,7 +59,7 @@ public struct NotesImportSummary: Equatable, Sendable {
         self.cancelled = cancelled
     }
 
-    /// « 42 notes importées, 3 verrouillées ignorées ».
+    /// "42 notes importees, 3 verrouillees ignorees".
     public var text: String {
         func n(_ count: Int, _ singular: String, _ plural: String) -> String {
             "\(count) \(count > 1 ? plural : singular)"

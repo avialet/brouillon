@@ -54,7 +54,7 @@ public enum NotesHTML {
                     return next()
                 }
                 if let tag = parseTag() { return tag }
-                // « < » isole : texte.
+                // "<" isole : texte.
                 i += 1
                 return .text("<")
             }

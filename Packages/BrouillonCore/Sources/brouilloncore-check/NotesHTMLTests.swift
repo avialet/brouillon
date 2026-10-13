@@ -40,8 +40,8 @@ let notesHTMLTests: (String, [Test]) = ("NotesHTML", [
     },
     Test("entities") {
         expectEqual(NotesHTML.text(from: "<div>&lt;b&gt; &amp; &quot;x&quot; &#39;y&#39; &eacute;t&#xE9; &#233;</div>"),
-                    "<b> & \"x\" 'y' été é")
-        expectEqual(NotesHTML.text(from: "<div>a&nbsp;&nbsp;b &hellip; &rsquo;</div>"), "a  b … \u{2019}")
+                    "<b> & \"x\" 'y' \u{00E9}t\u{00E9} \u{00E9}")
+        expectEqual(NotesHTML.text(from: "<div>a&nbsp;&nbsp;b &hellip; &rsquo;</div>"), "a  b \u{2026} \u{2019}")
         expectEqual(NotesHTML.text(from: "<div>&inconnu; &#xZZ;</div>"), "&inconnu; &#xZZ;")
     },
     Test("tablesAsTabbedText") {

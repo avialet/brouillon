@@ -26,7 +26,7 @@ public struct Draft: Codable, Sendable, Identifiable, Equatable {
     }
 
     /// Premiere ligne non vide, 60 caracteres au plus. Une premiere ligne trop
-    /// courte (« { », « - ») est completee par les suivantes, espaces repliees.
+    /// courte ("{", "-") est completee par les suivantes, espaces repliees.
     public static func title(for text: String) -> String {
         let lines = text.split(whereSeparator: \.isNewline)
             .map { $0.split(whereSeparator: { $0 == " " || $0 == "\t" }).joined(separator: " ") }
@@ -199,7 +199,7 @@ public final class DraftStore: Sendable {
         return Draft(id: record.id, text: text, title: title, createdAt: record.createdAt, updatedAt: record.updatedAt)
     }
 
-    /// Pour l'affichage : une ligne que la cle n'ouvre pas devient « Brouillon illisible » au lieu
+    /// Pour l'affichage : une ligne que la cle n'ouvre pas devient "Brouillon illisible" au lieu
     /// de faire echouer toute la liste. Seule l'absence de cle (verrouille) est une erreur.
     static func displayDraft(_ record: DraftRecord, key: SymmetricKey?) throws -> Draft {
         do {

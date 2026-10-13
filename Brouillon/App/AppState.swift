@@ -21,7 +21,7 @@ final class AppState {
     /// Recherche dans la colonne des brouillons (en memoire, sur les brouillons dechiffres).
     var searchQuery = ""
     private var searchIndex = DraftSearchIndex()
-    /// Feuille « Importer depuis Notes » et son etat.
+    /// Feuille "Importer depuis Notes" et son etat.
     var showingImport = false
     private(set) var importModel: NotesImportModel?
     /// Source de l'import : l'app Notes (une source factice en mode capture).

@@ -13,7 +13,7 @@ extension DraftStore {
         try database.read { db in try Self.state(in: db) }
     }
 
-    /// « Pas maintenant » sur une base d'avant 0.3.0 : la protection reste desactivee.
+    /// "Pas maintenant" sur une base d'avant 0.3.0 : la protection reste desactivee.
     public func declineProtection() throws {
         try database.write { db in
             if try Self.state(in: db) == .undecided { try Meta.set(Self.protectionMeta, ProtectionState.off.rawValue, in: db) }

@@ -233,7 +233,7 @@ final class ProtectionController {
         }
     }
 
-    /// « Pas maintenant » sur la carte d'accueil.
+    /// "Pas maintenant" sur la carte d'accueil.
     func decline() {
         try? store.declineProtection()
         state = (try? store.protectionState()) ?? state

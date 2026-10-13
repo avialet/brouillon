@@ -3,7 +3,7 @@ import SwiftUI
 import VialetKit
 import BrouillonCore
 
-/// Carte « Protection » des Reglages : activer (verrou et chiffrement), delai d'inactivite,
+/// Carte "Protection" des Reglages : activer (verrou et chiffrement), delai d'inactivite,
 /// verrouiller maintenant, sauvegarde en clair d'avant le chiffrement.
 struct ProtectionSettingsCard: View {
     @Environment(ProtectionController.self) private var protection

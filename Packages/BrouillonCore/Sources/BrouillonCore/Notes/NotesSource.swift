@@ -1,7 +1,7 @@
 import Foundation
 import Synchronization
 
-/// Un dossier de l'app Notes (sous-dossiers en chemin « Parent › Enfant »).
+/// Un dossier de l'app Notes (sous-dossiers en chemin "Parent > Enfant").
 public struct NotesFolder: Sendable, Hashable, Identifiable, Codable {
     public var id: String
     public var name: String
@@ -116,7 +116,7 @@ public enum NotesScript {
     }
     """
 
-    /// Les images embarquees (data URL) sont retirees avant le transfert : elles deviennent « [image] ».
+    /// Les images embarquees (data URL) sont retirees avant le transfert : elles deviennent "[image]".
     static let bodies = """
     function run(argv) {
       var N = Application("Notes"), out = {};
