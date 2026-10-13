@@ -9,4 +9,6 @@ run([
     notesHTMLTests,
     cipherTests,
     protectionTests,
+    notesImportTests,
+    notesSourceTests,
 ])
