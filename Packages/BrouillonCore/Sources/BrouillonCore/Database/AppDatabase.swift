@@ -8,10 +8,13 @@ public final class AppDatabase: Sendable {
     /// processus de l'app (CLI, extension) recharge.
     public static let didChangeNotification = "fr.vialet.brouillon.databaseDidChange"
     private let notifiesOtherProcesses: Bool
+    /// Fichier de la base ; nil en memoire.
+    public let fileURL: URL?
 
-    public init(writer: any DatabaseWriter, notifiesOtherProcesses: Bool) throws {
+    public init(writer: any DatabaseWriter, notifiesOtherProcesses: Bool, fileURL: URL? = nil) throws {
         self.writer = writer
         self.notifiesOtherProcesses = notifiesOtherProcesses
+        self.fileURL = fileURL
         try Migrations.migrator.migrate(writer)
         try writer.write { db in
             if try Meta.value("deviceId", in: db) == nil {
@@ -45,9 +48,11 @@ public final class AppDatabase: Sendable {
         config.busyMode = .timeout(5)
         config.prepareDatabase { db in
             try db.execute(sql: "PRAGMA foreign_keys = ON")
+            // Les pages liberees (texte en clair remplace par le chiffre) sont mises a zero.
+            try db.execute(sql: "PRAGMA secure_delete = ON")
         }
         let pool = try DatabasePool(path: url.path, configuration: config)
-        return try AppDatabase(writer: pool, notifiesOtherProcesses: true)
+        return try AppDatabase(writer: pool, notifiesOtherProcesses: true, fileURL: url)
     }
 
     public func read<T: Sendable>(_ block: (Database) throws -> T) throws -> T {

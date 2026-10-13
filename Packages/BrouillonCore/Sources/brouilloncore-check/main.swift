@@ -8,4 +8,5 @@ run([
     draftTests,
     notesHTMLTests,
     cipherTests,
+    protectionTests,
 ])

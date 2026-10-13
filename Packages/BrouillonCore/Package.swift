@@ -27,7 +27,7 @@ let package = Package(
         // les Command Line Tools (voir docs/tests.md).
         .executableTarget(
             name: "brouilloncore-check",
-            dependencies: ["BrouillonCore"]
+            dependencies: ["BrouillonCore", .product(name: "GRDB", package: "GRDB.swift")]
         ),
     ]
 )
