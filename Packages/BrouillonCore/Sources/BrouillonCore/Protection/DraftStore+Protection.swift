@@ -81,19 +81,27 @@ extension DraftStore {
     /// sauvegarde existante ; relue avant de continuer.
     func writeBackup(of file: URL) throws -> URL {
         let url = Self.availableBackupURL(for: file)
-        try database.writer.writeWithoutTransaction { db in
-            try db.execute(sql: "VACUUM INTO ?", arguments: [url.path])
+        do {
+            try database.writer.writeWithoutTransaction { db in
+                try db.execute(sql: "VACUUM INTO ?", arguments: [url.path])
+            }
+            let expectedCount = try database.read { db in try DraftRecord.fetchCount(db) }
+            var config = Configuration()
+            config.readonly = true
+            let copy = try DatabaseQueue(path: url.path, configuration: config)
+            let copied = try copy.read { db in try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM draft") ?? -1 }
+            try copy.close()
+            guard copied == expectedCount else {
+                throw DraftStoreError.verificationFailed("sauvegarde incompl\u{00E8}te : \(copied) sur \(expectedCount)")
+            }
+            return url
+        } catch {
+            // Copie partielle ou fausse : retiree (la base, elle, n'a pas ete touchee).
+            for suffix in ["", "-wal", "-shm", "-journal"] {
+                try? FileManager.default.removeItem(atPath: url.path + suffix)
+            }
+            throw error
         }
-        let expectedCount = try database.read { db in try DraftRecord.fetchCount(db) }
-        var config = Configuration()
-        config.readonly = true
-        let copy = try DatabaseQueue(path: url.path, configuration: config)
-        let copied = try copy.read { db in try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM draft") ?? -1 }
-        try copy.close()
-        guard copied == expectedCount else {
-            throw DraftStoreError.verificationFailed("sauvegarde incompl\u{00E8}te : \(copied) sur \(expectedCount)")
-        }
-        return url
     }
 
     /// `brouillon.sqlite.avant-chiffrement`, puis `-2`, `-3`... si elle existe deja.
@@ -114,7 +122,13 @@ extension DraftStore {
         let dir = file.deletingLastPathComponent()
         let prefix = file.lastPathComponent + Self.backupSuffix
         let names = (try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []
-        return names.filter { $0.hasPrefix(prefix) }.sorted().map { dir.appendingPathComponent($0) }
+        func rank(_ name: String) -> Int {
+            let rest = name.dropFirst(prefix.count)
+            return rest.isEmpty ? 1 : Int(rest.dropFirst()) ?? Int.max
+        }
+        return names.filter { $0.hasPrefix(prefix) }
+            .sorted { (rank($0), $0) < (rank($1), $1) }
+            .map { dir.appendingPathComponent($0) }
     }
 
     /// Relecture dans la transaction : memes brouillons, tous chiffres (ou tous en clair).

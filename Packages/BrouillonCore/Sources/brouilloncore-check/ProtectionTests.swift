@@ -124,6 +124,17 @@ let protectionTests: (String, [Test]) = ("Protection", [
         expectEqual(backup?.lastPathComponent, "brouillon.sqlite.avant-chiffrement-2")
         expectEqual(try Data(contentsOf: existing), Data("ancienne".utf8))
     },
+    Test("backupsSortedNumerically") {
+        let dir = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = DraftStore(database: try AppDatabase.open(at: dir.appendingPathComponent("brouillon.sqlite")))
+        for suffix in ["-10", "", "-2", "-3"] {
+            try Data().write(to: dir.appendingPathComponent("brouillon.sqlite.avant-chiffrement" + suffix))
+        }
+        expectEqual(store.existingBackups().map(\.lastPathComponent),
+                    ["brouillon.sqlite.avant-chiffrement", "brouillon.sqlite.avant-chiffrement-2",
+                     "brouillon.sqlite.avant-chiffrement-3", "brouillon.sqlite.avant-chiffrement-10"])
+    },
     Test("lockedStoreRefusesReadAndWrite") {
         let store = DraftStore(database: try AppDatabase.inMemory())
         let draft = try store.save(id: nil, text: "avant", now: t0)!
