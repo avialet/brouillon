@@ -25,6 +25,7 @@ struct BrouillonApp: App {
         .defaultSize(width: 1080, height: 660)
         .commands {
             AboutCommands(identity: Brand.identity)
+            UpdateCommands(updater: .shared)
             BrouillonCommands(state: state)
         }
 
