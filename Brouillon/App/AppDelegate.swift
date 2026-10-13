@@ -108,15 +108,11 @@ extension AppDelegate {
     /// seconde ne doit rien dupliquer), base chiffree avec une cle en memoire, imprime les resumes, quitte.
     func runNotesTrialIfRequested() -> Bool {
         guard UserDefaults.standard.bool(forKey: Brand.key("NotesTrial")) else { return false }
-        guard let path = ProcessInfo.processInfo.environment["BROUILLON_DB_PATH"], !path.isEmpty else {
-            print("essai : BROUILLON_DB_PATH obligatoire, la vraie base n'est jamais utilis\u{00E9}e")
-            exit(2)
-        }
         let protection = ProtectionController.shared
         protection.useEphemeralKeys()
         protection.start()
         let store = AppState.shared.store
-        print("essai : base \(path), protection \(protection.state.rawValue)")
+        print("essai : base \(AppDatabase.defaultURL.path), protection \(protection.state.rawValue)")
         Task.detached {
             do {
                 let source = OsascriptNotesSource()

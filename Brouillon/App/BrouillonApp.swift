@@ -10,7 +10,26 @@ struct BrouillonApp: App {
     @AppStorage(Brand.key("MenuBar")) private var menuBarVisible = true
 
     /// Teintes de l'app avant le premier rendu (et police Bricolage Grotesque des titres).
-    init() { Theme.configure(Brand.palette) }
+    init() {
+        #if DEBUG
+        Self.refuseRealDatabaseForDebugModes()
+        #endif
+        Theme.configure(Brand.palette)
+    }
+
+    #if DEBUG
+    /// Mode capture et essai d'import : BROUILLON_DB_PATH obligatoire, verifie avant toute ouverture
+    /// de la base (AppState.shared l'ouvre et la migre des la premiere vue).
+    private static func refuseRealDatabaseForDebugModes() {
+        let arguments = CommandLine.arguments
+        let debugMode = arguments.contains("-\(Brand.name)Snapshot") || arguments.contains("-\(Brand.name)NotesTrial")
+        let path = ProcessInfo.processInfo.environment["BROUILLON_DB_PATH"] ?? ""
+        if debugMode && path.isEmpty {
+            print("capture ou essai : BROUILLON_DB_PATH obligatoire, la vraie base n'est jamais utilis\u{00E9}e")
+            exit(2)
+        }
+    }
+    #endif
 
     var body: some Scene {
         Window(Brand.displayName, id: "main") {
