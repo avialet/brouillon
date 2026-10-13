@@ -117,7 +117,7 @@ struct InsightPanel: View {
         VStack(alignment: .leading, spacing: 18) {
             section("Reconnu") {
                 HStack(spacing: 8) {
-                    Chip(state.text.isEmpty ? "Vide" : state.kind.label, icon: state.text.isEmpty ? "circle.dashed" : state.kind.icon, color: Theme.accent, filled: !state.text.isEmpty)
+                    Chip(state.text.isEmpty ? "Vide" : state.kind.label, icon: state.text.isEmpty ? "circle.dashed" : state.kind.icon, color: state.text.isEmpty ? Theme.accent : Theme.accentDeep, filled: !state.text.isEmpty) // blanc sur deep : contraste AA
                     if state.kind == .color, let hex = ContentDetector.hexColor(state.text) {
                         RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color(hex: hex)).frame(width: 22, height: 22)
                             .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Theme.line))
