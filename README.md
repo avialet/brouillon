@@ -90,9 +90,11 @@ dossiers de l'app Notes avec leur nombre de notes. Cochez ceux à reprendre, pui
   (en texte tabulé) sont convertis en texte ; une image devient `[image]`, une pièce jointe `[pièce jointe]`.
 - Les notes verrouillées par un mot de passe dans Notes sont ignorées (et comptées dans le résumé),
   comme le dossier Suppressions récentes.
-- Relancer l'import ne crée pas de doublon. Une note modifiée dans Notes depuis l'import est ignorée,
-  sauf si vous cochez **Mettre à jour les notes modifiées** ; un brouillon que vous avez modifié dans
-  Brouillon n'est alors jamais écrasé, la nouvelle version s'ajoute à côté.
+- Relancer l'import ne crée pas de doublon ; en revanche, une note dont vous avez supprimé le brouillon
+  est importée de nouveau (décochez son dossier pour l'éviter).
+- Une note sans nom ni texte est ignorée.
+- Une note modifiée dans Notes depuis l'import est ignorée, sauf si vous cochez **Mettre à jour les
+  notes modifiées** ; un brouillon que vous avez modifié dans Brouillon n'est alors jamais écrasé, la nouvelle version s'ajoute à côté.
 
 ### Protection
 
