@@ -54,6 +54,12 @@ let notesHTMLTests: (String, [Test]) = ("NotesHTML", [
             + "<div><object data=\"a.pdf\"></object></div>"
         expectEqual(NotesHTML.text(from: html), "photo\n[image]\ntexte [image] suite\n[pi\u{00E8}ce jointe]")
     },
+    Test("notesTablesInsideObject") {
+        let html = "<div>avant</div><object><table cellspacing=\"0\"><tbody><tr><td><div>a</div></td><td><div>b</div></td></tr></tbody></table></object><div>apres</div>"
+        expectEqual(NotesHTML.text(from: html), "avant\na\tb\napres")
+        expectEqual(NotesHTML.text(from: "<div>x</div><object></object>"), "x\n[pi\u{00E8}ce jointe]")
+        expectEqual(NotesHTML.text(from: "<ul class=\"Apple-dash-list\"><li>tiret</li></ul>"), "- tiret")
+    },
     Test("preservesPre") {
         expectEqual(NotesHTML.text(from: "<pre>a  b\n  c</pre><div>d</div>"), "a  b\n  c\nd")
     },

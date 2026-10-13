@@ -139,12 +139,14 @@ public enum NotesHTML {
         private var cellIndex = 0
         private var preDepth = 0
         private var hiddenDepth = 0
+        /// `<object>` ouverts : true tant qu'aucun contenu rendu (Notes y met ses tableaux).
+        private var objects: [Bool] = []
 
         private static let blocks: Set<String> = ["div", "p", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote",
                                                   "section", "article", "header", "footer", "dl", "dt", "dd", "hr"]
         private static let hidden: Set<String> = ["head", "style", "script", "title", "template"]
         private static let voids: Set<String> = ["br", "img", "input", "hr", "meta", "link", "embed", "source"]
-        private static let attachments: Set<String> = ["object", "embed", "attachment", "iframe", "video", "audio"]
+        private static let attachments: Set<String> = ["embed", "attachment", "iframe", "video", "audio"]
 
         mutating func handle(_ token: Token) {
             switch token {
@@ -195,7 +197,10 @@ public enum NotesHTML {
                 }
                 current = String(repeating: "  ", count: depth - 1) + marker
                 currentHasContent = false
+            case "object":
+                objects.append(true)
             case "table":
+                markObjectsFilled()
                 breakLine()
             case "tr":
                 if cellDepth == 0 { breakLine() }
@@ -237,6 +242,9 @@ public enum NotesHTML {
                 trimTrailingSpaces()
             case "tr", "table":
                 if cellDepth == 0 { breakLine() }
+            case "object":
+                // Objet sans tableau ni texte : une piece jointe.
+                if objects.popLast() == true { appendMention("[pi\u{00E8}ce jointe]") }
             case "pre":
                 preDepth = max(0, preDepth - 1)
                 breakLine()
@@ -288,12 +296,18 @@ public enum NotesHTML {
                 }
             }
             guard !out.isEmpty else { return }
+            if out.contains(where: { $0 != " " }) { markObjectsFilled() }
             current += out
             if !links.isEmpty { links[links.count - 1].label += out }
             if out.contains(where: { $0 != " " }) || currentHasContent { currentHasContent = true }
         }
 
+        private mutating func markObjectsFilled() {
+            for i in objects.indices { objects[i] = false }
+        }
+
         private mutating func appendMention(_ mention: String) {
+            markObjectsFilled()
             if currentHasContent, let last = current.last, last != " ", last != "\t" { current += " " }
             current += mention
             currentHasContent = true
