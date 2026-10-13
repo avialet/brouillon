@@ -7,4 +7,5 @@ run([
     suggestionTests,
     draftTests,
     notesHTMLTests,
+    cipherTests,
 ])
