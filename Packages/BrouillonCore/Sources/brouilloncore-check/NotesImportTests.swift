@@ -184,6 +184,17 @@ let notesImportTests: (String, [Test]) = ("NotesImport", [
         expectEqual(summary.imported, 0)
         expectEqual(source.requestedBodies.count, 2, "pas de relecture note par note apres l'annulation")
     },
+    Test("emptyNoteIsIgnored") {
+        let store = DraftStore(database: try AppDatabase.inMemory())
+        let source = sampleSource()
+        source.notesByFolder["f2"] = [NotesNoteInfo(id: "n6", name: " ", folderId: "f2", createdAt: t0, modifiedAt: t0, isLocked: false)]
+        source.bodiesById["n6"] = "<div><br></div>"
+        let summary = try runImport(store, source, folders: ["f2"])
+        expectEqual(summary.imported, 0)
+        expectEqual(summary.empty, 1)
+        expectEqual(summary.text, "Aucune note import\u{00E9}e, 1 vide ignor\u{00E9}e")
+        expectEqual(try store.count(), 0)
+    },
     Test("failingBodyIsCountedNotFatal") {
         let store = DraftStore(database: try AppDatabase.inMemory())
         let source = sampleSource()

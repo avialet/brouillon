@@ -43,10 +43,13 @@ public struct NotesImportSummary: Equatable, Sendable {
     public var modifiedSkipped = 0
     public var locked = 0
     public var failed = 0
+    /// Notes sans nom ni texte : ignorees.
+    public var empty = 0
     public var cancelled = false
 
     public init(imported: Int = 0, updated: Int = 0, unchanged: Int = 0, modifiedSkipped: Int = 0,
-                locked: Int = 0, failed: Int = 0, cancelled: Bool = false) {
+                locked: Int = 0, failed: Int = 0, empty: Int = 0, cancelled: Bool = false) {
+        self.empty = empty
         self.imported = imported
         self.updated = updated
         self.unchanged = unchanged
@@ -68,6 +71,7 @@ public struct NotesImportSummary: Equatable, Sendable {
             parts.append(n(modifiedSkipped, "modifi\u{00E9}e depuis ignor\u{00E9}e", "modifi\u{00E9}es depuis ignor\u{00E9}es"))
         }
         if locked > 0 { parts.append(n(locked, "verrouill\u{00E9}e ignor\u{00E9}e", "verrouill\u{00E9}es ignor\u{00E9}es")) }
+        if empty > 0 { parts.append(n(empty, "vide ignor\u{00E9}e", "vides ignor\u{00E9}es")) }
         if failed > 0 { parts.append("\(failed) en \u{00E9}chec") }
         return (cancelled ? "Import annul\u{00E9} : " : "") + parts.joined(separator: ", ")
     }
@@ -130,8 +134,13 @@ public final class NotesImporter: Sendable {
             if isCancelled() { summary.cancelled = true; break }
             for (note, action) in batch {
                 if let html = bodies[note.id] {
-                    try write(note, html: html, action: action, now: now)
-                    if case .create = action { summary.imported += 1 } else { summary.updated += 1 }
+                    let text = NotesHTML.draftText(name: note.name, html: html)
+                    if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        summary.empty += 1
+                    } else {
+                        try write(note, text: text, action: action, now: now)
+                        if case .create = action { summary.imported += 1 } else { summary.updated += 1 }
+                    }
                 } else {
                     summary.failed += 1
                 }
@@ -158,8 +167,7 @@ public final class NotesImporter: Sendable {
         }
     }
 
-    private func write(_ note: NotesNoteInfo, html: String, action: NotesImportAction, now: Date) throws {
-        let text = NotesHTML.draftText(name: note.name, html: html)
+    private func write(_ note: NotesNoteInfo, text: String, action: NotesImportAction, now: Date) throws {
         let name = NotesHTML.collapse(note.name)
         let title = name.isEmpty ? Draft.title(for: text) : Draft.shortened(name)
         let currentKey = store.key.withLock { $0 }
