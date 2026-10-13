@@ -54,13 +54,14 @@ extension AppDelegate {
             if defaults.bool(forKey: "BrouillonSnapshotSeed") {
                 let now = Date()
                 _ = try? state.store.save(id: nil, text: "Relancer le fournisseur\n- devis signé ?\n- date de livraison\n- numéro de suivi", now: now.addingTimeInterval(-86400 * 2))
-                _ = try? state.store.save(id: nil, text: "https://app.vialet.app/?utm_source=newsletter&utm_campaign=rentr%C3%A9e%202026", now: now.addingTimeInterval(-3600 * 5))
+                _ = try? state.store.save(id: nil, text: "https://vialet.app/?utm_source=newsletter&utm_campaign=rentr%C3%A9e%202026", now: now.addingTimeInterval(-3600 * 5))
                 state.reload()
                 state.newDraft()
-                state.text = "{\"name\":\"Brouillon\",\"version\":\"0.1.0\",\"tags\":[\"mac\",\"local\"],\"author\":{\"name\":\"Aurélien\",\"city\":\"Marseille\"}}"
+                state.text = "{\"name\":\"Brouillon\",\"version\":\"0.1.0\",\"tags\":[\"mac\",\"local\"],\"author\":{\"name\":\"Camille\",\"city\":\"Lyon\"}}"
                 state.flushSave()
             }
             try? await Task.sleep(for: .seconds(2))
+            await applySnapshotSize(defaults)
             if let window = WindowSummoner.mainWindow { try? WindowSnapshot.write(window, to: URL(fileURLWithPath: base + "-1.png")) }
             state.apply(.prettyJSON)
             try? await Task.sleep(for: .seconds(1))
@@ -68,6 +69,17 @@ extension AppDelegate {
             print("kind: \(state.kind), suggestions: \(state.suggestions.map(\.rawValue)), drafts: \(state.drafts.count)")
             NSApp.terminate(nil)
         }
+    }
+
+    /// `-BrouillonSnapshotSize 1000x720` : taille de contenu (points) de la fenetre principale avant capture.
+    func applySnapshotSize(_ defaults: UserDefaults) async {
+        guard let spec = defaults.string(forKey: "BrouillonSnapshotSize") else { return }
+        let parts = spec.lowercased().split(separator: "x").compactMap { Double($0) }
+        guard parts.count == 2, parts.allSatisfy({ $0 > 0 }), let window = WindowSummoner.mainWindow else { return }
+        window.setContentSize(NSSize(width: parts[0], height: parts[1]))
+        window.contentView?.layoutSubtreeIfNeeded()
+        // Un tour de boucle pour que SwiftUI refasse la disposition.
+        try? await Task.sleep(for: .milliseconds(500))
     }
 }
 #endif
