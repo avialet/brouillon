@@ -139,6 +139,31 @@ let protectionTests: (String, [Test]) = ("Protection", [
         try store.unlock(with: key)
         expectEqual(try store.list().map(\.text), ["avant"])
     },
+    Test("unreadableRowDoesNotEmptyTheList") {
+        let store = DraftStore(database: try AppDatabase.inMemory())
+        let a = try store.save(id: nil, text: "Premier", now: t0)!
+        let b = try store.save(id: nil, text: "Second", now: t0.addingTimeInterval(1))!
+        try store.enableProtection(key: NoteCipher.newKey())
+        try store.database.write { db in
+            try db.execute(sql: "UPDATE draft SET textSealed = x'01000000000000000000000000000000000000000000000000000000' WHERE id = ?", arguments: [a.id])
+        }
+        let before = try rawRows(store.database)[a.id]
+        let list = try store.list()
+        expectEqual(list.count, 2, "la ligne illisible ne vide pas la liste")
+        expectEqual(list.first { $0.id == b.id }?.text, "Second")
+        let broken = list.first { $0.id == a.id }
+        expect(broken?.isUnreadable == true)
+        expectEqual(broken?.title, "Brouillon illisible")
+        expectEqual(try store.draft(a.id)?.isUnreadable, true)
+        expectThrows { _ = try store.save(id: a.id, text: "ecrase", now: t0) }
+        expectEqual(try rawRows(store.database)[a.id], before, "jamais ecrase")
+        try store.delete(a.id)
+        expectEqual(try store.list().map(\.id), [b.id])
+        store.lock()
+        do { _ = try store.list(); expect(false, "verrouille : erreur attendue") } catch DraftStoreError.locked {} catch {
+            expect(false, "erreur \(error) au lieu de locked")
+        }
+    },
     Test("savesAreSealedWhenProtected") {
         let store = DraftStore(database: try AppDatabase.inMemory())
         try store.enableProtection(key: NoteCipher.newKey())

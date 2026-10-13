@@ -11,13 +11,18 @@ public struct Draft: Codable, Sendable, Identifiable, Equatable {
     public var title: String
     public var createdAt: Date
     public var updatedAt: Date
+    /// Chiffre mais indechiffrable avec la cle (donnees alterees) : affiche, jamais modifie.
+    public var isUnreadable = false
 
-    public init(id: String, text: String, title: String, createdAt: Date, updatedAt: Date) {
+    public static let unreadableTitle = "Brouillon illisible"
+
+    public init(id: String, text: String, title: String, createdAt: Date, updatedAt: Date, isUnreadable: Bool = false) {
         self.id = id
         self.text = text
         self.title = title
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.isUnreadable = isUnreadable
     }
 
     /// Premiere ligne non vide, 60 caracteres au plus. Une premiere ligne trop
@@ -67,12 +72,15 @@ public enum DraftStoreError: Error, Equatable, CustomStringConvertible {
     case wrongKey
     /// La relecture apres chiffrement ou dechiffrement ne redonne pas les memes brouillons.
     case verificationFailed(String)
+    /// Brouillon chiffre que la cle n'ouvre pas : on ne l'ecrase pas.
+    case unreadable
 
     public var description: String {
         switch self {
         case .locked: "Brouillon est verrouill\u{00E9}."
         case .wrongKey: "La cl\u{00E9} du trousseau ne correspond pas \u{00E0} celle qui a chiffr\u{00E9} les brouillons."
         case .verificationFailed(let detail): "La relecture a \u{00E9}chou\u{00E9} (\(detail)) : rien n'a \u{00E9}t\u{00E9} modifi\u{00E9}."
+        case .unreadable: "Ce brouillon est illisible (cl\u{00E9} ou donn\u{00E9}es alt\u{00E9}r\u{00E9}es) : il n'est pas modifi\u{00E9}."
         }
     }
 }
@@ -114,8 +122,10 @@ public final class DraftStore: Sendable {
         return try database.write { db in
             let sealing = try Self.sealingKey(currentKey, in: db)
             if let id, let existing = try DraftRecord.fetchOne(db, key: id) {
-                // Texte identique (brouillon simplement ouvert) : rien a ecrire, la date reste.
-                if let current = try? Self.draft(existing, key: sealing ?? currentKey), current.text == text { return current }
+                // Illisible : jamais ecrase. Texte identique (brouillon simplement ouvert) : rien a
+                // ecrire, la date reste.
+                let current = try Self.strictDraft(existing, key: sealing ?? currentKey)
+                if current.text == text { return current }
                 let draft = Draft(id: id, text: text, title: Draft.title(for: text), createdAt: existing.createdAt, updatedAt: now)
                 try Self.record(draft, sealing: sealing).update(db)
                 return draft
@@ -129,7 +139,7 @@ public final class DraftStore: Sendable {
     public func list() throws -> [Draft] {
         let currentKey = key.withLock { $0 }
         return try database.read { db in
-            try DraftRecord.order(Column("updatedAt").desc).fetchAll(db).map { try Self.draft($0, key: currentKey) }
+            try DraftRecord.order(Column("updatedAt").desc).fetchAll(db).map { try Self.displayDraft($0, key: currentKey) }
         }
     }
 
@@ -141,7 +151,7 @@ public final class DraftStore: Sendable {
     public func draft(_ id: String) throws -> Draft? {
         let currentKey = key.withLock { $0 }
         return try database.read { db in
-            try DraftRecord.fetchOne(db, key: id).map { try Self.draft($0, key: currentKey) }
+            try DraftRecord.fetchOne(db, key: id).map { try Self.displayDraft($0, key: currentKey) }
         }
     }
 
@@ -187,6 +197,30 @@ public final class DraftStore: Sendable {
         let text = try record.textSealed.map { try NoteCipher.open($0, key: key, context: context(record.id, "text")) } ?? ""
         let title = try record.titleSealed.map { try NoteCipher.open($0, key: key, context: context(record.id, "title")) } ?? ""
         return Draft(id: record.id, text: text, title: title, createdAt: record.createdAt, updatedAt: record.updatedAt)
+    }
+
+    /// Pour l'affichage : une ligne que la cle n'ouvre pas devient « Brouillon illisible » au lieu
+    /// de faire echouer toute la liste. Seule l'absence de cle (verrouille) est une erreur.
+    static func displayDraft(_ record: DraftRecord, key: SymmetricKey?) throws -> Draft {
+        do {
+            return try draft(record, key: key)
+        } catch DraftStoreError.locked {
+            throw DraftStoreError.locked
+        } catch {
+            return Draft(id: record.id, text: "", title: Draft.unreadableTitle,
+                         createdAt: record.createdAt, updatedAt: record.updatedAt, isUnreadable: true)
+        }
+    }
+
+    /// Pour ecrire : une ligne illisible est une erreur (`unreadable`), jamais ecrasee.
+    static func strictDraft(_ record: DraftRecord, key: SymmetricKey?) throws -> Draft {
+        do {
+            return try draft(record, key: key)
+        } catch DraftStoreError.locked {
+            throw DraftStoreError.locked
+        } catch {
+            throw DraftStoreError.unreadable
+        }
     }
 
     static func keyCheck(_ key: SymmetricKey) throws -> String {

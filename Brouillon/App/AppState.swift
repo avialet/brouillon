@@ -29,6 +29,8 @@ final class AppState {
     /// Texte recu par `brouillon://new?text=` pendant le verrouillage : cree au deverrouillage.
     var pendingNewText: String?
     private var suppressSave = false
+    /// Erreur de lecture de la base, affichee dans la colonne des brouillons.
+    private(set) var loadError: String?
     /// Incremente pour redonner le focus a l'editeur.
     private(set) var focusRequest = 0
     private var undoStack: [String] = []
@@ -102,9 +104,22 @@ final class AppState {
     // MARK: Brouillons
 
     func reload() {
-        drafts = (try? store.list()) ?? []
+        do {
+            drafts = try store.list()
+            loadError = nil
+        } catch DraftStoreError.locked {
+            // Verrouille : rien a afficher, l'ecran de verrou le dit.
+            drafts = []
+            loadError = nil
+        } catch {
+            drafts = []
+            loadError = "Lecture des brouillons impossible : \(error)"
+        }
         searchIndex = DraftSearchIndex(drafts)
     }
+
+    /// Brouillons chiffres que la cle n'ouvre pas (affiches, jamais modifies).
+    var unreadableCount: Int { drafts.filter(\.isUnreadable).count }
 
     func newDraft() {
         flushSave()
@@ -115,6 +130,8 @@ final class AppState {
     }
 
     func open(_ draft: Draft) {
+        // Illisible : ne s'ouvre pas, pour ne jamais etre ecrase.
+        guard !draft.isUnreadable else { NSSound.beep(); return }
         flushSave()
         currentId = draft.id
         undoStack = []

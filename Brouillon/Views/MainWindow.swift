@@ -78,7 +78,20 @@ struct DraftsSidebar: View {
                         Button("Importer depuis Notes\u{2026}") { state.beginImport() }
                             .buttonStyle(.link).font(Theme.ui(12, weight: .semibold))
                             .padding(.horizontal, 12).padding(.top, 6)
-                    } else if state.visibleDrafts.isEmpty {
+                    }
+                    if let error = state.loadError {
+                        Text(error).font(Theme.ui(12)).foregroundStyle(Theme.danger)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 12).padding(.top, 6)
+                    } else if state.unreadableCount > 0 {
+                        Text(state.unreadableCount == 1
+                             ? "1 brouillon illisible (cl\u{00E9} ou donn\u{00E9}es alt\u{00E9}r\u{00E9}es) : il n'est pas modifi\u{00E9}."
+                             : "\(state.unreadableCount) brouillons illisibles (cl\u{00E9} ou donn\u{00E9}es alt\u{00E9}r\u{00E9}es) : ils ne sont pas modifi\u{00E9}s.")
+                            .font(Theme.ui(11.5)).foregroundStyle(Theme.danger)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 12).padding(.top, 6)
+                    }
+                    if !state.drafts.isEmpty, state.visibleDrafts.isEmpty {
                         Text("Aucun brouillon ne contient \u{00AB}\u{00A0}\(state.searchQuery)\u{00A0}\u{00BB}.")
                             .font(Theme.ui(12)).foregroundStyle(Theme.inkFaint)
                             .padding(.horizontal, 12)
@@ -119,8 +132,13 @@ struct DraftRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(draft.title.isEmpty ? "Sans titre" : draft.title)
-                .font(Theme.ui(12.5, weight: .semibold)).foregroundStyle(Theme.ink).lineLimit(1)
+            HStack(spacing: 5) {
+                if draft.isUnreadable {
+                    Image(systemName: "exclamationmark.lock").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.danger)
+                }
+                Text(draft.title.isEmpty ? "Sans titre" : draft.title)
+                    .font(Theme.ui(12.5, weight: .semibold)).foregroundStyle(draft.isUnreadable ? Theme.inkSoft : Theme.ink).lineLimit(1)
+            }
             Text(draft.updatedAt.formatted(.relative(presentation: .named)))
                 .font(Theme.ui(11)).foregroundStyle(Theme.inkSoft)
         }

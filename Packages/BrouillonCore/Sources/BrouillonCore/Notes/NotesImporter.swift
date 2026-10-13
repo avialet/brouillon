@@ -166,7 +166,9 @@ public final class NotesImporter: Sendable {
                               createdAt: note.createdAt, updatedAt: note.modifiedAt)
             switch action {
             case .update(let draftId, keepEdited: false):
-                if let existing = try DraftRecord.fetchOne(db, key: draftId) {
+                // Brouillon illisible : jamais ecrase, la note arrive dans un nouveau brouillon.
+                if let existing = try DraftRecord.fetchOne(db, key: draftId),
+                   (try? DraftStore.strictDraft(existing, key: currentKey)) != nil {
                     draft.id = draftId
                     draft.createdAt = existing.createdAt
                     try DraftStore.record(draft, sealing: sealing).update(db)
