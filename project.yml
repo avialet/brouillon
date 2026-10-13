@@ -47,10 +47,12 @@ targets:
             CFBundleURLSchemes: [brouillon]
         LSApplicationCategoryType: public.app-category.productivity
         CFBundleIconFile: AppIcon
+        NSAppleEventsUsageDescription: "Brouillon lit vos notes dans l\u2019app Notes pour les importer, sans jamais les modifier."
     entitlements:
       path: Brouillon/Resources/Brouillon.entitlements
       properties:
         com.apple.security.app-sandbox: false
+        com.apple.security.automation.apple-events: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.vialet.brouillon

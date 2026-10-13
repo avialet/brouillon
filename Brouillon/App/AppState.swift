@@ -16,8 +16,19 @@ final class AppState {
     private(set) var drafts: [Draft] = []
     private(set) var currentId: String?
     var text = "" {
-        didSet { scheduleSave() }
+        didSet { if !suppressSave { scheduleSave() } }
     }
+    /// Recherche dans la colonne des brouillons (en memoire, sur les brouillons dechiffres).
+    var searchQuery = ""
+    private var searchIndex = DraftSearchIndex()
+    /// Feuille « Importer depuis Notes » et son etat.
+    var showingImport = false
+    private(set) var importModel: NotesImportModel?
+    /// Source de l'import : l'app Notes (une source factice en mode capture).
+    @ObservationIgnored var importSource: any NotesSource = OsascriptNotesSource()
+    /// Texte recu par `brouillon://new?text=` pendant le verrouillage : cree au deverrouillage.
+    var pendingNewText: String?
+    private var suppressSave = false
     /// Incremente pour redonner le focus a l'editeur.
     private(set) var focusRequest = 0
     private var undoStack: [String] = []
@@ -47,6 +58,9 @@ final class AppState {
     var isCodeLike: Bool { kind == .json || kind == .code }
 
     var canUndoTransform: Bool { !undoStack.isEmpty }
+
+    /// Brouillons affiches : filtres par la recherche.
+    var visibleDrafts: [Draft] { searchIndex.filter(drafts, query: searchQuery) }
 
     // MARK: Transformations
 
@@ -89,6 +103,7 @@ final class AppState {
 
     func reload() {
         drafts = (try? store.list()) ?? []
+        searchIndex = DraftSearchIndex(drafts)
     }
 
     func newDraft() {
@@ -109,8 +124,16 @@ final class AppState {
 
     func delete(_ draft: Draft) {
         try? store.delete(draft.id)
-        if draft.id == currentId { currentId = nil; undoStack = []; text = "" }
-        reload()
+        if draft.id == currentId {
+            saveTask?.cancel()
+            currentId = nil
+            undoStack = []
+            suppressSave = true
+            text = ""
+            suppressSave = false
+        }
+        drafts.removeAll { $0.id == draft.id }
+        searchIndex.remove(draft.id)
     }
 
     private func scheduleSave() {
@@ -122,14 +145,75 @@ final class AppState {
         }
     }
 
-    /// Sauvegarde immediate (vide : pas de brouillon cree).
-    func flushSave() {
+    /// Sauvegarde immediate (vide : pas de brouillon cree). Renvoie false si l'ecriture a echoue :
+    /// le texte reste alors en memoire.
+    @discardableResult
+    func flushSave() -> Bool {
         saveTask?.cancel()
         saveTask = nil
-        if let saved = try? store.save(id: currentId, text: text) {
-            currentId = saved.id
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return true }
+        do {
+            if let saved = try store.save(id: currentId, text: text) {
+                currentId = saved.id
+                upsert(saved)
+            }
+            return true
+        } catch {
+            return false
         }
+    }
+
+    /// Met a jour la liste sans tout relire (ni tout dechiffrer).
+    private func upsert(_ draft: Draft) {
+        if let index = drafts.firstIndex(where: { $0.id == draft.id }) {
+            if drafts[index] == draft { return }
+            drafts.remove(at: index)
+        }
+        let position = drafts.firstIndex(where: { $0.updatedAt <= draft.updatedAt }) ?? drafts.endIndex
+        drafts.insert(draft, at: position)
+        searchIndex.update(draft)
+    }
+
+    // MARK: Import
+
+    func beginImport() {
+        flushSave()
+        importModel = NotesImportModel(source: importSource)
+        showingImport = true
+        WindowSummoner.show()
+    }
+
+    // MARK: Verrou
+
+    /// Au verrouillage : sauvegarde, puis plus rien de dechiffre en memoire (le texte en cours n'est
+    /// garde que si sa sauvegarde a echoue, pour ne pas le perdre).
+    func lockContent() {
+        let saved = flushSave()
+        suppressSave = true
+        if saved { text = "" }
+        drafts = []
+        searchIndex = DraftSearchIndex()
+        searchQuery = ""
+        undoStack = []
+        showingImport = false
+        suppressSave = false
+    }
+
+    /// Au deverrouillage : relit les brouillons et rouvre celui qui etait ouvert.
+    func didUnlock() {
         reload()
+        if !text.isEmpty {
+            flushSave()
+        } else if let id = currentId, let draft = drafts.first(where: { $0.id == id }) {
+            open(draft)
+        } else if let last = drafts.first {
+            open(last)
+        }
+        if let pending = pendingNewText {
+            pendingNewText = nil
+            newDraft()
+            text = pending
+        }
     }
 
     func requestFocus() { focusRequest += 1 }

@@ -4,21 +4,38 @@ import BrouillonCore
 
 struct MainWindow: View {
     @Environment(AppState.self) private var state
+    @Environment(ProtectionController.self) private var protection
 
     var body: some View {
-        HStack(spacing: 0) {
-            DraftsSidebar()
-                .frame(width: 220)
-                .background(Theme.sidebar)
-            VStack(spacing: 0) {
-                UpdateNotice(updater: .shared)
-                EditorPane()
+        @Bindable var state = state
+        ZStack {
+            if protection.isLocked {
+                LockView()
+            } else {
+                HStack(spacing: 0) {
+                    DraftsSidebar()
+                        .frame(width: 220)
+                        .background(Theme.sidebar)
+                    VStack(spacing: 0) {
+                        UpdateNotice(updater: .shared)
+                        ProtectionBanner()
+                        EditorPane()
+                    }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(AmbientBackground())
+                    InsightPanel()
+                        .frame(width: 290)
+                        .background(Theme.sidebar)
+                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(AmbientBackground())
-            InsightPanel()
-                .frame(width: 290)
-                .background(Theme.sidebar)
+            if protection.isBusy {
+                BusyOverlay(label: protection.busyLabel)
+            }
+        }
+        .sheet(isPresented: $state.showingImport) {
+            if let model = state.importModel {
+                NotesImportSheet(model: model).environment(state)
+            }
         }
     }
 }
@@ -28,17 +45,25 @@ struct DraftsSidebar: View {
     @Environment(AppState.self) private var state
 
     var body: some View {
+        @Bindable var state = state
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 0) {
                 Wordmark(Brand.displayName)
                 Spacer()
+                Button { state.beginImport() } label: { Image(systemName: "square.and.arrow.down").font(.system(size: 13, weight: .semibold)) }
+                    .buttonStyle(.plain).foregroundStyle(Theme.accent).help("Importer depuis Notes\u{2026}")
+                    .padding(.trailing, 10)
                 Button { state.newDraft() } label: { Image(systemName: "square.and.pencil").font(.system(size: 13, weight: .semibold)) }
                     .buttonStyle(.plain).foregroundStyle(Theme.accent).help("Nouveau brouillon (⌘N)")
             }
-            .padding(.horizontal, 18).padding(.top, 22).padding(.bottom, 12)
+            .padding(.horizontal, 18).padding(.top, 22).padding(.bottom, 10)
+            if state.drafts.count > 1 {
+                SearchField(text: $state.searchQuery)
+                    .padding(.horizontal, 12).padding(.bottom, 8)
+            }
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 2) {
-                    ForEach(state.drafts) { draft in
+                    ForEach(state.visibleDrafts) { draft in
                         DraftRow(draft: draft, selected: draft.id == state.currentId)
                             .onTapGesture { state.open(draft) }
                             .contextMenu {
@@ -50,6 +75,13 @@ struct DraftsSidebar: View {
                         Text("Vos brouillons apparaîtront ici. Tout est sauvegardé en continu.")
                             .font(Theme.ui(12)).foregroundStyle(Theme.inkFaint)
                             .padding(.horizontal, 12)
+                        Button("Importer depuis Notes\u{2026}") { state.beginImport() }
+                            .buttonStyle(.link).font(Theme.ui(12, weight: .semibold))
+                            .padding(.horizontal, 12).padding(.top, 6)
+                    } else if state.visibleDrafts.isEmpty {
+                        Text("Aucun brouillon ne contient \u{00AB}\u{00A0}\(state.searchQuery)\u{00A0}\u{00BB}.")
+                            .font(Theme.ui(12)).foregroundStyle(Theme.inkFaint)
+                            .padding(.horizontal, 12)
                     }
                 }
                 .padding(.horizontal, 8)
@@ -57,6 +89,27 @@ struct DraftsSidebar: View {
             Spacer(minLength: 0)
             ShortcutFooter(HotKeyController.shared.shortcut)
         }
+    }
+}
+
+/// Champ de recherche de la colonne des brouillons (titres et textes, sans accents).
+struct SearchField: View {
+    @Binding var text: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+            TextField("Rechercher", text: $text)
+                .textFieldStyle(.plain)
+                .font(Theme.ui(12.5))
+            if !text.isEmpty {
+                Button { text = "" } label: { Image(systemName: "xmark.circle.fill").font(.system(size: 11)) }
+                    .buttonStyle(.plain).foregroundStyle(Theme.inkFaint).help("Effacer la recherche")
+            }
+        }
+        .padding(.horizontal, 9).padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.card))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.line, lineWidth: 1))
     }
 }
 

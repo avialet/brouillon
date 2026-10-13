@@ -6,6 +6,7 @@ import BrouillonCore
 struct BrouillonApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var state = AppState.shared
+    @State private var protection = ProtectionController.shared
     @AppStorage(Brand.key("MenuBar")) private var menuBarVisible = true
 
     /// Teintes de l'app avant le premier rendu (et police Bricolage Grotesque des titres).
@@ -15,6 +16,7 @@ struct BrouillonApp: App {
         Window(Brand.displayName, id: "main") {
             MainWindow()
                 .environment(state)
+                .environment(protection)
                 .fontDesign(.rounded)
                 .frame(minWidth: 900, minHeight: 520)
                 .onAppear { AppearanceChoice.current(defaultsKey: Brand.key("Appearance")).apply(defaultsKey: Brand.key("Appearance")) }
@@ -26,15 +28,15 @@ struct BrouillonApp: App {
         .commands {
             AboutCommands(identity: Brand.identity)
             UpdateCommands(updater: .shared)
-            BrouillonCommands(state: state)
+            BrouillonCommands(state: state, protection: protection)
         }
 
         Settings {
-            SettingsView()
+            SettingsView().environment(protection)
         }
 
         MenuBarExtra(isInserted: $menuBarVisible) {
-            MenuBarContent().environment(state)
+            MenuBarContent().environment(state).environment(protection)
         } label: {
             MenuBarIcon(glyph: Brand.glyph)
         }
@@ -43,12 +45,23 @@ struct BrouillonApp: App {
 
 struct BrouillonCommands: Commands {
     let state: AppState
+    let protection: ProtectionController
 
     var body: some Commands {
+        CommandGroup(after: .appSettings) {
+            Button("Verrouiller \(Brand.displayName)") { protection.lock(.manual) }
+                .keyboardShortcut("l", modifiers: [.control, .command])
+                .disabled(protection.state != .on || protection.isLocked)
+        }
         CommandGroup(replacing: .newItem) {
-            Button("Nouveau brouillon") { state.newDraft() }.keyboardShortcut("n")
-            Button("Coller dans un nouveau brouillon") { state.newDraft(); state.pasteReplacing() }.keyboardShortcut("n", modifiers: [.command, .shift])
-            Button("Exporter…") { state.export() }.keyboardShortcut("e").disabled(state.text.isEmpty)
+            Group {
+                Button("Nouveau brouillon") { state.newDraft() }.keyboardShortcut("n")
+                Button("Coller dans un nouveau brouillon") { state.newDraft(); state.pasteReplacing() }.keyboardShortcut("n", modifiers: [.command, .shift])
+                Divider()
+                Button("Importer depuis Notes\u{2026}") { state.beginImport() }
+                Button("Exporter…") { state.export() }.keyboardShortcut("e").disabled(state.text.isEmpty)
+            }
+            .disabled(protection.isLocked)
         }
         CommandMenu("Transformer") {
             ForEach(state.suggestions) { t in
