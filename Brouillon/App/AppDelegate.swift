@@ -10,7 +10,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Mode capture et essai d'import : ni raccourci global, ni reseau, ni trousseau.
         if runNotesTrialIfRequested() { return }
         if runSnapshotIfRequested() { return }
+        if writeHubManifestIfRequested() { return }
         #endif
+        AppActions.shared.publish()
         ProtectionController.shared.start()
         HotKeyController.shared.start { WindowSummoner.toggle() }
         // Laisse l'app s'afficher avant le moindre appel reseau.
@@ -23,19 +25,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppState.shared.flushSave()
     }
 
-    /// Liens `brouillon://` : ouvre la fenetre, `brouillon://new?text=...` cree un brouillon preremplit.
+    /// Liens `brouillon://` : `brouillon://new` cree un brouillon (`?text=...` le preremplit), au
+    /// deverrouillage si Brouillon est verrouille ; `brouillon://update` verifie les mises a jour ; le
+    /// reste ouvre la fenetre.
     func application(_ application: NSApplication, open urls: [URL]) {
-        for url in urls where url.scheme == "brouillon" {
-            if url.host == "new" {
-                let text = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "text" })?.value
-                if ProtectionController.shared.isLocked {
-                    // Cree au deverrouillage.
-                    AppState.shared.pendingNewText = text ?? ""
-                } else {
-                    AppState.shared.newDraft()
-                    if let text { AppState.shared.text = text }
-                }
+        for url in urls where url.scheme?.lowercased() == "brouillon" {
+            if url.host?.lowercased() == "new",
+               let text = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "text" })?.value {
+                Self.newDraft(text: text)
+            } else if !AppActions.shared.handle(url) {
+                WindowSummoner.show(focus: true)
             }
+        }
+    }
+
+    /// Nouveau brouillon (preremplit par `text`), cree au deverrouillage si Brouillon est verrouille.
+    static func newDraft(text: String?) {
+        if ProtectionController.shared.isLocked {
+            AppState.shared.pendingNewText = text ?? ""
+        } else {
+            AppState.shared.newDraft()
+            if let text { AppState.shared.text = text }
         }
         WindowSummoner.show(focus: true)
     }
@@ -50,14 +60,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 #if DEBUG
+extension AppDelegate {
+    /// `Brouillon -BrouillonHubManifest <dossier>` : ecrit la fiche pour Vialet dans le dossier (sans la
+    /// condition du dossier Applications, sans prevenir Vialet), imprime son chemin et quitte.
+    func writeHubManifestIfRequested() -> Bool {
+        guard let path = UserDefaults.standard.string(forKey: Brand.key("HubManifest")) else { return false }
+        let directory = URL(fileURLWithPath: path, isDirectory: true)
+        do {
+            try AppActions.shared.manifest().write(to: directory)
+            print("fiche : \(HubManifest.fileURL(bundleIdentifier: Brand.identity.bundleIdentifier, in: directory).path)")
+        } catch {
+            print("fiche non ecrite : \(error)")
+        }
+        exit(0)
+    }
+}
+
 /// Mode capture sans ecran (voir SnapshotRunner) : `Brouillon -BrouillonSnapshot <dossier>
 /// [-BrouillonSnapshotSeed 1] [-BrouillonSnapshotAppearance dark] [-BrouillonSnapshotOnly a,b]
 /// [-BrouillonSnapshotSize 1000x720]`, avec BROUILLON_DB_PATH vers une base jetable (neuve : la
 /// protection s'y active d'office, cle en memoire, jamais le trousseau). Ecrit `mainWindow`, `settings`
 /// (avec la carte Protection), `about`, `transformation` (le JSON mis en forme), `importNotes`
 /// (choix des dossiers, source factice), `importNotesResume`, `protectionOffer` (carte d'accueil d'une
-/// base d'avant 0.3.0) et `lock` (`-sombre` en sombre) dans le
-/// dossier, puis quitte.
+/// base d'avant 0.3.0), `lock` et `actionNew` (action rapide `brouillon://new`, verrouille puis
+/// deverrouille) (`-sombre` en sombre) dans le dossier, puis quitte.
 extension AppDelegate {
     func runSnapshotIfRequested() -> Bool {
         guard SnapshotRequest.parse(prefix: Brand.name, arguments: CommandLine.arguments) != nil else { return false }
@@ -99,8 +125,25 @@ extension AppDelegate {
             try await Task.sleep(for: .seconds(1))
             return WindowSummoner.mainWindow
         }
+        // Action rapide de Vialet, par son URL, Brouillon verrouille : rien n'est cree avant le
+        // deverrouillage, le brouillon neuf s'ouvre ensuite. Capture du brouillon neuf.
+        let action = SnapshotScenario("actionNew") {
+            state.showingImport = false
+            protection.previewOffer(false)
+            if !protection.isLocked { protection.lock(.manual) }
+            let before = state.drafts.count
+            AppActions.shared.handle(URL(string: "brouillon://new")!)
+            try await Task.sleep(for: .milliseconds(500))
+            let waiting = state.pendingNewText != nil && state.drafts.count == before
+            await protection.unlock()
+            try await Task.sleep(for: .seconds(1))
+            // Un brouillon neuf n'a pas d'identifiant (enregistre a la premiere frappe).
+            let created = state.pendingNewText == nil && state.currentId == nil && state.text.isEmpty
+            print("actionNew : verrouille \(waiting ? "en attente" : "CREE TROP TOT"), deverrouille \(created ? "cree" : "NON CREE")")
+            return WindowSummoner.mainWindow
+        }
         return SnapshotRunner.runIfRequested(prefix: Brand.name,
-                                             scenarios: standard + [transformation, importNotes, importSummary, offer, lock])
+                                             scenarios: standard + [transformation, importNotes, importSummary, offer, lock, action])
     }
 
     /// Essai reel de l'import (lecture seule de l'app Notes) : `Brouillon -BrouillonNotesTrial 1`, avec
