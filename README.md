@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/screenshots/icone.png" width="128" alt="Icône de Brouillon">
+
 # Brouillon
 
 **Le bloc-notes qui comprend ce que vous y collez.**
@@ -10,15 +12,17 @@
 
 [**Télécharger le DMG**](https://github.com/avialet/brouillon/releases/latest) · [Site](https://brouillon.vialet.app)
 
+<img src="docs/screenshots/fenetre.png" width="900" alt="Brouillon avec un JSON reconnu et formaté">
+
 </div>
 
 ## Ce que fait Brouillon
 
-<!-- a adapter : trois idees, une phrase chacune -->
+Un bloc-notes pour tout ce qui passe par là : un JSON à lire, une URL à décoder, un texte à nettoyer, une liste à trier. Collez, Brouillon reconnaît ce que c'est et propose quoi en faire.
 
-- **Première idée.** Une phrase.
-- **Deuxième idée.** Une phrase.
-- **Rester chez vous.** Tout est stocké sur votre Mac. Aucun compte, aucun serveur, aucune télémétrie.
+- **Il reconnaît ce que vous collez.** JSON, lien, couleur, code, chemin, nombre, timestamp, base64, entités HTML : une pastille le dit, et les suggestions suivent. Les compteurs (caractères, mots, lignes, temps de lecture) sont toujours là.
+- **Une transformation, un clic, annulable.** Formater ou compacter un JSON, décoder une URL ou du base64, changer la casse, nettoyer les espaces et les caractères invisibles, trier, dédoublonner, numéroter ou inverser des lignes, convertir un timestamp en date ou une couleur en rgb(). Vingt-deux transformations, toutes pures, toutes réversibles.
+- **Sauvegardé en continu, chez vous.** Chaque brouillon est enregistré au fil de la frappe dans un fichier SQLite sur votre Mac. Un raccourci global ramène la fenêtre avec le curseur dans le texte, depuis n'importe quelle app.
 
 ## Installation
 
@@ -53,11 +57,22 @@ Le seul échange réseau de Brouillon est cette lecture de la version publiée. 
 
 ## Notice
 
-<!-- a adapter -->
-
-- **Raccourci global** (⇧⌘Espace par défaut, modifiable dans les Réglages) : affiche ou masque Brouillon depuis n'importe quelle app.
+- **⇧⌘Espace** (modifiable dans les Réglages) ouvre Brouillon avec le curseur dans le texte, ou le masque.
+- **⌘N** nouveau brouillon, **⇧⌘N** colle le presse-papiers dans un nouveau brouillon, **⌘E** exporte en `.txt` (ou `.json`), **⇧⌘C** copie tout.
+- La colonne de droite affiche ce qui est reconnu, les compteurs et les **suggestions** ; le menu **Choisir…** et le menu **Transformer** donnent toutes les transformations, par famille. **⇧⌘Z** annule la dernière transformation (la frappe a son propre ⌘Z).
+- La colonne de gauche liste les brouillons, du plus récent au plus ancien. Clic droit pour supprimer.
+- L'icône de la barre des menus crée un brouillon, colle dans un nouveau brouillon, ou rouvre les derniers.
+- Le lien `brouillon://new?text=…` crée un brouillon prérempli, pour un script ou un lanceur.
 - Fermer la fenêtre ne quitte pas l'app : le raccourci et l'icône de la barre des menus restent actifs. **⌘Q** quitte vraiment.
-- Le lien `brouillon://` ouvre la fenêtre principale.
+
+| Famille | Transformations |
+|---|---|
+| JSON | formater, compacter |
+| Web | décoder / encoder une URL, décoder / encoder en base64, décoder les entités HTML |
+| Casse | MAJUSCULES, minuscules, Majuscule À Chaque Mot, majuscule en début de phrase |
+| Nettoyage | nettoyer les espaces, retirer les caractères invisibles, transformer en slug |
+| Lignes | trier, dédoublonner, inverser, numéroter |
+| Conversion | timestamp ↔ date ISO, couleur #hex ↔ rgb() |
 
 ### Vos données
 
@@ -82,7 +97,7 @@ make release   # fabrique build/Brouillon-X.Y.Z.dmg et son empreinte
 
 | Dossier | Contenu |
 |---|---|
-| `Packages/BrouillonCore` | Noyau sans interface : modèles, base SQLite ([GRDB](https://github.com/groue/GRDB.swift)), logique |
+| `Packages/BrouillonCore` | Noyau sans interface : transformations, statistiques, suggestions, brouillons SQLite ([GRDB](https://github.com/groue/GRDB.swift)) |
 | `Brouillon` | L'application SwiftUI ; `App/Brand.swift` porte son identité |
 | `scripts` | Assemblage de l'app, du DMG et de l'icône |
 | `docs` | [Publier une version](docs/publier-une-version.md), [tests](docs/tests.md), notes de version |

@@ -95,6 +95,11 @@ let draftTests: (String, [Test]) = ("Drafts", [
         expectEqual(try store.list().map(\.id), [b.id])
         expectEqual(try store.draft(b.id)?.text, "Second")
     },
+    Test("titleSkipsTinyFirstLines") {
+        expectEqual(Draft.title(for: "{\n  \"a\" : 1,\n  \"b\" : 2\n}"), "{ \"a\" : 1, \"b\" : 2 }")
+        expectEqual(Draft.title(for: "- \nListe de courses\nlait"), "- Liste de courses lait")
+        expectEqual(Draft.title(for: "Premier brouillon\nsuite"), "Premier brouillon")
+    },
     Test("titleIsShort") {
         let store = DraftStore(database: try AppDatabase.inMemory())
         let d = try store.save(id: nil, text: "\n\n" + String(repeating: "mot ", count: 40), now: t0)!

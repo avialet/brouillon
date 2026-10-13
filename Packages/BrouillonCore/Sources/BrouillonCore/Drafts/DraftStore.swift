@@ -11,10 +11,15 @@ public struct Draft: Codable, Sendable, Identifiable, Equatable, FetchableRecord
     public var createdAt: Date
     public var updatedAt: Date
 
-    /// Premiere ligne non vide, 60 caracteres au plus.
+    /// Premiere ligne non vide, 60 caracteres au plus. Une premiere ligne trop
+    /// courte (« { », « - ») est completee par les suivantes, espaces repliees.
     public static func title(for text: String) -> String {
-        let line = text.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty } ?? ""
-        return line.count <= 60 ? line : String(line.prefix(60)).trimmingCharacters(in: .whitespaces) + "…"
+        let lines = text.split(whereSeparator: \.isNewline)
+            .map { $0.split(whereSeparator: { $0 == " " || $0 == "\t" }).joined(separator: " ") }
+            .filter { !$0.isEmpty }
+        guard let first = lines.first else { return "" }
+        let title = first.count >= 4 ? first : lines.joined(separator: " ")
+        return title.count <= 60 ? title : String(title.prefix(60)).trimmingCharacters(in: .whitespaces) + "…"
     }
 }
 

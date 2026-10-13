@@ -26,7 +26,7 @@ struct SettingsView: View {
                 }
                 Text(hotKey.isTaken
                      ? "Cette combinaison est déjà utilisée par une autre app. Choisissez-en une autre."
-                     : "Depuis n'importe quelle app : affiche ou masque \(Brand.displayName).")
+                     : "Depuis n'importe quelle app : ouvre \(Brand.displayName) avec le curseur dans le texte, ou le masque.")
                     .font(Theme.ui(12))
                     .foregroundStyle(hotKey.isTaken ? Theme.danger : Theme.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
