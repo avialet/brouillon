@@ -10,6 +10,8 @@ final class FakeNotesSource: NotesSource, @unchecked Sendable {
     var notesByFolder: [String: [NotesNoteInfo]]
     var bodiesById: [String: String]
     var failingBodies: Set<String> = []
+    /// Simule une annulation pendant la lecture d'un lot : le processus arrete, le lot echoue.
+    var cancelDuringBodies: CancelBox?
     private(set) var requestedBodies: [String] = []
 
     init(folders: [NotesFolder], notes: [String: [NotesNoteInfo]], bodies: [String: String]) {
@@ -26,6 +28,10 @@ final class FakeNotesSource: NotesSource, @unchecked Sendable {
 
     func bodies(of ids: [String]) throws -> [String: String] {
         requestedBodies += ids
+        if let cancelDuringBodies {
+            cancelDuringBodies.cancelled = true
+            throw NotesSourceError.failed("arrete")
+        }
         if ids.contains(where: failingBodies.contains) { throw NotesSourceError.failed("corps illisible") }
         return bodiesById.filter { ids.contains($0.key) }
     }
@@ -52,6 +58,10 @@ private func runImport(_ store: DraftStore, _ source: FakeNotesSource, folders: 
     return try importer.run(folderIds: folders, updateModified: update, batchSize: 2, now: t0.addingTimeInterval(3600),
                             progress: { done, total in progress.append(done, total) },
                             isCancelled: { cancelAfter.map { progress.lastDone >= $0 } ?? false })
+}
+
+final class CancelBox: @unchecked Sendable {
+    var cancelled = false
 }
 
 final class ProgressLog: @unchecked Sendable {
@@ -160,6 +170,19 @@ let notesImportTests: (String, [Test]) = ("NotesImport", [
         let rest = try runImport(store, source)
         expectEqual(rest.imported, 1)
         expectEqual(rest.unchanged, 2)
+    },
+    Test("cancelDuringBatchStopsWithoutFailures") {
+        let store = DraftStore(database: try AppDatabase.inMemory())
+        let source = sampleSource()
+        let box = CancelBox()
+        source.cancelDuringBodies = box
+        let summary = try NotesImporter(store: store, source: source)
+            .run(folderIds: ["f1"], updateModified: false, batchSize: 2, now: t0,
+                 progress: { _, _ in }, isCancelled: { box.cancelled })
+        expect(summary.cancelled)
+        expectEqual(summary.failed, 0, "une annulation n'est pas un echec")
+        expectEqual(summary.imported, 0)
+        expectEqual(source.requestedBodies.count, 2, "pas de relecture note par note apres l'annulation")
     },
     Test("failingBodyIsCountedNotFatal") {
         let store = DraftStore(database: try AppDatabase.inMemory())

@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 /// Un dossier de l'app Notes (sous-dossiers en chemin « Parent › Enfant »).
 public struct NotesFolder: Sendable, Hashable, Identifiable, Codable {
@@ -65,6 +66,12 @@ public protocol NotesSource: Sendable {
     func notes(inFolders ids: [String]) throws -> [NotesNoteInfo]
     /// Corps HTML par identifiant ; une note illisible est absente du resultat.
     func bodies(of ids: [String]) throws -> [String: String]
+    /// Arrete la lecture en cours (annulation de l'import).
+    func cancel()
+}
+
+extension NotesSource {
+    public func cancel() {}
 }
 
 /// Scripts JavaScript for Automation (osascript) : uniquement des lectures (`get`), jamais d'ecriture.
@@ -161,9 +168,15 @@ public enum NotesScript {
 }
 
 /// Source reelle : osascript en JavaScript for Automation, hors du thread principal.
-/// L'autorisation Automatisation est demandee par macOS au premier appel.
+/// L'autorisation Automatisation est demandee par macOS au premier appel. Chaque appel est borne
+/// (`timeout`, 120 s par defaut) ; `cancel()` arrete le processus en cours.
 public struct OsascriptNotesSource: NotesSource {
-    public init() {}
+    public var timeout: TimeInterval
+    private let running = RunningProcess()
+
+    public init(timeout: TimeInterval = 120) {
+        self.timeout = timeout
+    }
 
     public func folders() throws -> [NotesFolder] {
         try NotesScript.decodeFolders(run(NotesScript.folders, arguments: []))
@@ -179,6 +192,8 @@ public struct OsascriptNotesSource: NotesSource {
         return try NotesScript.decodeBodies(run(NotesScript.bodies, arguments: ids))
     }
 
+    public func cancel() { running.terminate() }
+
     private func run(_ script: String, arguments: [String]) throws -> Data {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
@@ -188,14 +203,51 @@ public struct OsascriptNotesSource: NotesSource {
         process.standardOutput = output
         process.standardError = errors
         process.standardInput = FileHandle.nullDevice
+        let exited = DispatchSemaphore(value: 0)
+        process.terminationHandler = { _ in exited.signal() }
         try process.run()
-        // Lire avant d'attendre la fin : un gros JSON remplirait le tuyau.
-        let data = output.fileHandleForReading.readDataToEndOfFile()
-        let errorData = errors.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else {
-            throw NotesScript.error(status: process.terminationStatus, stderr: String(decoding: errorData, as: UTF8.self))
+        running.set(process)
+        defer { running.set(nil) }
+        // Sortie et erreurs lues en parallele : un tuyau plein bloquerait osascript.
+        let collected = Collected()
+        let reads = DispatchGroup()
+        for (pipe, isError) in [(output, false), (errors, true)] {
+            let handle = pipe.fileHandleForReading
+            reads.enter()
+            DispatchQueue.global(qos: .userInitiated).async {
+                collected.store(handle.readDataToEndOfFile(), error: isError)
+                reads.leave()
+            }
         }
-        return data
+        if exited.wait(timeout: .now() + timeout) == .timedOut {
+            process.terminate()
+            _ = reads.wait(timeout: .now() + 5)
+            throw NotesSourceError.failed("l'app Notes n'a pas r\u{00E9}pondu en \(Int(timeout)) s")
+        }
+        _ = reads.wait(timeout: .now() + 5)
+        if process.terminationReason == .uncaughtSignal {
+            throw NotesSourceError.failed("lecture interrompue")
+        }
+        guard process.terminationStatus == 0 else {
+            throw NotesScript.error(status: process.terminationStatus, stderr: String(decoding: collected.error, as: UTF8.self))
+        }
+        return collected.output
     }
+}
+
+/// Processus osascript en cours, pour l'arreter a l'annulation.
+final class RunningProcess: Sendable {
+    private let process = Mutex<Process?>(nil)
+    func set(_ value: Process?) { process.withLock { $0 = value } }
+    func terminate() { process.withLock { if let p = $0, p.isRunning { p.terminate() } } }
+}
+
+/// Sortie et erreurs d'osascript, remplies depuis deux files.
+final class Collected: Sendable {
+    private let data = Mutex<(output: Data, error: Data)>((Data(), Data()))
+    func store(_ value: Data, error: Bool) {
+        data.withLock { if error { $0.error = value } else { $0.output = value } }
+    }
+    var output: Data { data.withLock { $0.output } }
+    var error: Data { data.withLock { $0.error } }
 }

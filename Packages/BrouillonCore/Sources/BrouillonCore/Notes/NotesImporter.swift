@@ -125,7 +125,9 @@ public final class NotesImporter: Sendable {
         for start in stride(from: 0, to: work.count, by: max(1, batchSize)) {
             if isCancelled() { summary.cancelled = true; break }
             let batch = Array(work[start..<min(start + max(1, batchSize), work.count)])
-            let bodies = try fetchBodies(batch.map(\.0.id))
+            let bodies = try fetchBodies(batch.map(\.0.id), isCancelled: isCancelled)
+            // Annule pendant la lecture du lot (processus arrete) : rien n'est compte en echec.
+            if isCancelled() { summary.cancelled = true; break }
             for (note, action) in batch {
                 if let html = bodies[note.id] {
                     try write(note, html: html, action: action, now: now)
@@ -141,7 +143,7 @@ public final class NotesImporter: Sendable {
     }
 
     /// Corps d'un lot ; en cas d'erreur du lot, note par note (une note illisible n'arrete pas l'import).
-    private func fetchBodies(_ ids: [String]) throws -> [String: String] {
+    private func fetchBodies(_ ids: [String], isCancelled: @Sendable () -> Bool) throws -> [String: String] {
         do {
             return try source.bodies(of: ids)
         } catch NotesSourceError.notAuthorized {
@@ -149,6 +151,7 @@ public final class NotesImporter: Sendable {
         } catch {
             var bodies: [String: String] = [:]
             for id in ids {
+                if isCancelled() { break }
                 if let one = try? source.bodies(of: [id]) { bodies.merge(one) { a, _ in a } }
             }
             return bodies

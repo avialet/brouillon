@@ -82,8 +82,10 @@ final class NotesImportModel {
         self.total = total
     }
 
+    /// Annule entre deux lots et arrete la lecture osascript en cours.
     func cancel() {
         cancelFlag.set()
+        source.cancel()
     }
 
     #if DEBUG
