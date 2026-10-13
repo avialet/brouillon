@@ -10,9 +10,12 @@ struct MainWindow: View {
             DraftsSidebar()
                 .frame(width: 220)
                 .background(Theme.sidebar)
-            EditorPane()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(AmbientBackground())
+            VStack(spacing: 0) {
+                UpdateNotice(updater: .shared)
+                EditorPane()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(AmbientBackground())
             InsightPanel()
                 .frame(width: 290)
                 .background(Theme.sidebar)
@@ -52,7 +55,6 @@ struct DraftsSidebar: View {
                 .padding(.horizontal, 8)
             }
             Spacer(minLength: 0)
-            UpdateBanner(updater: Updater.shared)
             ShortcutFooter(HotKeyController.shared.shortcut)
         }
     }
