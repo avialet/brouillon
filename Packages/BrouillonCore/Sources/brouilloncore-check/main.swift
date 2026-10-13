@@ -11,4 +11,6 @@ run([
     protectionTests,
     notesImportTests,
     notesSourceTests,
+    lockTests,
+    searchTests,
 ])
