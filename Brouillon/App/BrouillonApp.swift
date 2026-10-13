@@ -7,7 +7,6 @@ struct BrouillonApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var state = AppState.shared
     @State private var protection = ProtectionController.shared
-    @AppStorage(Brand.key("MenuBar")) private var menuBarVisible = true
 
     /// Teintes de l'app avant le premier rendu (et police Bricolage Grotesque des titres).
     init() {
@@ -55,7 +54,7 @@ struct BrouillonApp: App {
             SettingsView().environment(protection)
         }
 
-        MenuBarExtra(isInserted: $menuBarVisible) {
+        MenuBarExtra(isInserted: MenuBarPresence.shared.binding) {
             MenuBarContent().environment(state).environment(protection)
         } label: {
             MenuBarIcon(glyph: Brand.glyph)
