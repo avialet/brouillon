@@ -11,7 +11,12 @@ DERIVED := $(BUILD_DIR)/DerivedData
 CORE := Packages/$(APP)Core
 HAS_XCODE := $(shell xcodebuild -version >/dev/null 2>&1 && echo yes || echo no)
 
-.PHONY: gen build xcode-build spm-build run install release test icon clean
+# Depot vialetapps (scripts/plaque.swift pour l'icone et le fond du DMG) : par defaut le dossier parent.
+VIALETAPPS_PATH ?= $(abspath $(CURDIR)/..)
+export VIALETAPPS_PATH
+PLAQUE := $(VIALETAPPS_PATH)/scripts/plaque.swift
+
+.PHONY: gen build xcode-build spm-build run install release dmg-layout test icon clean
 
 # La version vit dans VERSION. Pour Xcode, on la recopie dans Version.xcconfig.
 gen:
@@ -57,13 +62,20 @@ release:
 	scripts/bundle.sh release
 	scripts/make-dmg.sh
 
+# Disposition de la fenetre du DMG (Finder) : scripts/dmg/DS_Store et fond.png, a committer.
+dmg-layout:
+	swift build -c release --product $(APP) 2>&1 | grep -E "error|Build"
+	scripts/bundle.sh release
+	scripts/make-dmg.sh --layout
+
 # Tests du noyau : fonctionne avec les seuls Command Line Tools.
 test:
 	cd $(CORE) && swift run brouilloncore-check $(FILTER)
 
-# Icone : plaque a la couleur d'accent, initiale du nom.
+# Icone : plaque de l'affiche (glyphe de Brand.swift, initiale s'il est vide), par scripts/plaque.swift.
 icon:
-	swift scripts/make-icon.swift .
+	@[ -f "$(PLAQUE)" ] || { echo "plaque.swift introuvable : $(PLAQUE) (VIALETAPPS_PATH=<depot vialetapps>)" >&2; exit 1; }
+	swift "$(PLAQUE)" iconset $(APP)/App/Brand.swift $(BUILD_DIR) >/dev/null
 	iconutil -c icns $(BUILD_DIR)/AppIcon.iconset -o $(APP)/Resources/AppIcon.icns
 
 clean:

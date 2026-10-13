@@ -20,7 +20,8 @@ settings:
 packages:
   VialetKit:
     url: https://github.com/avialet/vialetkit.git
-    from: "0.1.0"
+    # Mineur epingle (0.2.x) : en 0.x, un changement cassant du kit monte le mineur.
+    minorVersion: "0.2.1"
   BrouillonCore:
     path: Packages/BrouillonCore
 targets:
@@ -40,7 +41,7 @@ targets:
         CFBundleDisplayName: Brouillon
         CFBundleName: Brouillon
         LSMinimumSystemVersion: "26.0"
-        NSHumanReadableCopyright: "Aurelien Vialet"
+        NSHumanReadableCopyright: "\u00A9 2026 Aur\u00E9lien Vialet" # YAML : \u00A9 = signe copyright
         CFBundleURLTypes:
           - CFBundleURLName: fr.vialet.brouillon
             CFBundleURLSchemes: [brouillon]

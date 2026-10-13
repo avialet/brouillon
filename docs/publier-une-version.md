@@ -6,8 +6,10 @@ la mise à jour depuis l'application.
 ## Étapes
 
 1. Mettre à jour `VERSION` (par exemple `0.2.0`). C'est le seul endroit où la
-   version est écrite : `scripts/bundle.sh` la copie dans l'Info.plist et l'app
-   la lit dans son bundle.
+   version est écrite : `scripts/bundle.sh` la copie dans l'Info.plist
+   (`CFBundleShortVersionString`) et l'app la lit dans son bundle. Le numéro de
+   build (`CFBundleVersion`) est le nombre de commits (`git rev-list --count HEAD`),
+   à défaut un horodatage : le panneau À propos affiche « Version 0.2.0 (42) ».
 2. Écrire les notes de version dans `docs/notes/vX.Y.Z.md` (affichées dans l'app
    et sur GitHub ; sans ce fichier, elles sont générées depuis les commits).
 3. `make test` : tout doit passer.
@@ -20,6 +22,12 @@ la mise à jour depuis l'application.
    égale `VERSION`, lance les tests, construit `Brouillon-0.2.0.dmg` et son
    empreinte `Brouillon-0.2.0.dmg.sha256`, puis crée la Release GitHub avec
    les deux fichiers.
+
+Le DMG s'ouvre sur un volume « Brouillon » (sans version) : l'app, un lien
+Applications, le fond et la disposition de `scripts/dmg` (`fond.png`, `DS_Store`,
+produits par `make dmg-layout` et committés) et l'icône de l'app comme icône de
+volume. L'app reste à la racine sous le nom `Brouillon.app` : la mise à jour
+intégrée la cherche là.
 
 ## Sans passer par GitHub Actions
 
