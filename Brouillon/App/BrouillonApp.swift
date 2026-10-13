@@ -19,8 +19,9 @@ struct BrouillonApp: App {
 
     #if DEBUG
     /// Mode capture et essai d'import : BROUILLON_DB_PATH obligatoire, verifie avant toute ouverture
-    /// de la base (AppState.shared l'ouvre et la migre des la premiere vue).
-    private static func refuseRealDatabaseForDebugModes() {
+    /// de la base. Appele aussi par AppState.init, juste avant AppDatabase.open() : les proprietes
+    /// @State de l'app (AppState.shared) sont initialisees avant le corps de init().
+    static func refuseRealDatabaseForDebugModes() {
         let arguments = CommandLine.arguments
         let debugMode = arguments.contains("-\(Brand.name)Snapshot") || arguments.contains("-\(Brand.name)NotesTrial")
         let path = ProcessInfo.processInfo.environment["BROUILLON_DB_PATH"] ?? ""

@@ -37,6 +37,9 @@ final class AppState {
     private var saveTask: Task<Void, Never>?
 
     private init() {
+        #if DEBUG
+        BrouillonApp.refuseRealDatabaseForDebugModes()
+        #endif
         do {
             database = try AppDatabase.open()
         } catch {
