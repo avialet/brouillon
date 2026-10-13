@@ -1,0 +1,29 @@
+// swift-tools-version: 6.0
+// Construction de l'app via SwiftPM (sans Xcode) : `make run`.
+// VIALETKIT_PATH=../vialetkit make run : travailler sur le kit et l'app en meme temps
+// (ne pas committer le Package.resolved modifie dans ce mode).
+import Foundation
+import PackageDescription
+
+let kit: Package.Dependency = ProcessInfo.processInfo.environment["VIALETKIT_PATH"]
+    .map { .package(path: $0) } ?? .package(url: "https://github.com/avialet/vialetkit.git", from: "0.1.0")
+
+let package = Package(
+    name: "BrouillonApp",
+    platforms: [.macOS("26.0")],
+    dependencies: [
+        kit,
+        .package(path: "Packages/BrouillonCore"),
+    ],
+    targets: [
+        .executableTarget(
+            name: "Brouillon",
+            dependencies: [
+                .product(name: "VialetKit", package: "vialetkit"),
+                .product(name: "BrouillonCore", package: "BrouillonCore"),
+            ],
+            path: "Brouillon",
+            exclude: ["Resources"]
+        ),
+    ]
+)

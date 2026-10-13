@@ -1,0 +1,63 @@
+name: Brouillon
+options:
+  bundleIdPrefix: fr.vialet
+  deploymentTarget:
+    macOS: "26.0"
+  xcodeVersion: "26.0"
+  createIntermediateGroups: true
+# Version.xcconfig est ecrit par `make gen` depuis VERSION (MARKETING_VERSION).
+configFiles:
+  Debug: Version.xcconfig
+  Release: Version.xcconfig
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    CURRENT_PROJECT_VERSION: "1"
+packages:
+  VialetKit:
+    url: https://github.com/avialet/vialetkit.git
+    from: "0.1.0"
+  BrouillonCore:
+    path: Packages/BrouillonCore
+targets:
+  Brouillon:
+    type: application
+    platform: macOS
+    sources:
+      - path: Brouillon
+        excludes:
+          - "Resources/Info.plist"
+    dependencies:
+      - package: VialetKit
+      - package: BrouillonCore
+    info:
+      path: Brouillon/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Brouillon
+        CFBundleName: Brouillon
+        LSMinimumSystemVersion: "26.0"
+        NSHumanReadableCopyright: "Aurelien Vialet"
+        CFBundleURLTypes:
+          - CFBundleURLName: fr.vialet.brouillon
+            CFBundleURLSchemes: [brouillon]
+        LSApplicationCategoryType: public.app-category.productivity
+        CFBundleIconFile: AppIcon
+    entitlements:
+      path: Brouillon/Resources/Brouillon.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.vialet.brouillon
+        ENABLE_HARDENED_RUNTIME: false
+schemes:
+  Brouillon:
+    build:
+      targets:
+        Brouillon: all
+    run:
+      config: Debug

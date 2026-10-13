@@ -1,0 +1,5 @@
+import BrouillonCore
+
+run([
+    databaseTests,
+])
