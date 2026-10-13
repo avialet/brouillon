@@ -18,5 +18,7 @@ extension Updater {
 }
 
 extension HotKeyController {
-    static let shared = HotKeyController(defaultsKey: Brand.key("HotKey"), logName: Brand.displayName)
+    /// ⌥⇧Espace par defaut : chaque app vialet.app a son propre raccourci (Pico garde ⇧⌘Espace).
+    static let shared = HotKeyController(defaultsKey: Brand.key("HotKey"), logName: Brand.displayName,
+                                         initial: .space([.option, .shift]))
 }

@@ -57,7 +57,7 @@ Le seul échange réseau de Brouillon est cette lecture de la version publiée. 
 
 ## Notice
 
-- **⇧⌘Espace** (modifiable dans les Réglages) ouvre Brouillon avec le curseur dans le texte, ou le masque.
+- **⌥⇧Espace** (modifiable dans les Réglages) ouvre Brouillon avec le curseur dans le texte, ou le masque.
 - **⌘N** nouveau brouillon, **⇧⌘N** colle le presse-papiers dans un nouveau brouillon, **⌘E** exporte en `.txt` (ou `.json`), **⇧⌘C** copie tout.
 - La colonne de droite affiche ce qui est reconnu, les compteurs et les **suggestions** ; le menu **Choisir…** et le menu **Transformer** donnent toutes les transformations, par famille. **⇧⌘Z** annule la dernière transformation (la frappe a son propre ⌘Z).
 - La colonne de gauche liste les brouillons, du plus récent au plus ancien. Clic droit pour supprimer.
