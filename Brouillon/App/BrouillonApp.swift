@@ -6,7 +6,10 @@ import BrouillonCore
 struct BrouillonApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var state = AppState.shared
-    @AppStorage("BrouillonMenuBar") private var menuBarVisible = true
+    @AppStorage(Brand.key("MenuBar")) private var menuBarVisible = true
+
+    /// Teintes de l'app avant le premier rendu (et police Bricolage Grotesque des titres).
+    init() { Theme.configure(Brand.palette) }
 
     var body: some Scene {
         Window(Brand.displayName, id: "main") {
@@ -20,7 +23,10 @@ struct BrouillonApp: App {
         .windowStyle(.hiddenTitleBar)
         .windowBackgroundDragBehavior(.enabled)
         .defaultSize(width: 1080, height: 660)
-        .commands { BrouillonCommands(state: state) }
+        .commands {
+            AboutCommands(identity: Brand.identity)
+            BrouillonCommands(state: state)
+        }
 
         Settings {
             SettingsView()
@@ -29,7 +35,7 @@ struct BrouillonApp: App {
         MenuBarExtra(isInserted: $menuBarVisible) {
             MenuBarContent().environment(state)
         } label: {
-            Image(systemName: "note.text")
+            MenuBarIcon(glyph: Brand.glyph)
         }
     }
 }

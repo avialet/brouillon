@@ -12,7 +12,7 @@ struct MainWindow: View {
                 .background(Theme.sidebar)
             EditorPane()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(AmbientBackground(accent: Brand.accent))
+                .background(AmbientBackground())
             InsightPanel()
                 .frame(width: 290)
                 .background(Theme.sidebar)
@@ -27,11 +27,10 @@ struct DraftsSidebar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 0) {
-                Text(Brand.displayName).font(Theme.display(24)).foregroundStyle(Theme.ink)
-                Text(".").font(Theme.display(24)).foregroundStyle(Brand.accent)
+                Wordmark(Brand.displayName)
                 Spacer()
                 Button { state.newDraft() } label: { Image(systemName: "square.and.pencil").font(.system(size: 13, weight: .semibold)) }
-                    .buttonStyle(.plain).foregroundStyle(Brand.accent).help("Nouveau brouillon (⌘N)")
+                    .buttonStyle(.plain).foregroundStyle(Theme.accent).help("Nouveau brouillon (⌘N)")
             }
             .padding(.horizontal, 18).padding(.top, 22).padding(.bottom, 12)
             ScrollView {
@@ -54,9 +53,7 @@ struct DraftsSidebar: View {
             }
             Spacer(minLength: 0)
             UpdateBanner(updater: Updater.shared)
-            Text("Raccourci \(HotKeyController.shared.shortcut.display)")
-                .font(Theme.ui(11)).foregroundStyle(Theme.inkFaint)
-                .padding(.horizontal, 18).padding(.bottom, 14)
+            ShortcutFooter(HotKeyController.shared.shortcut)
         }
     }
 }
@@ -74,7 +71,7 @@ struct DraftRow: View {
         }
         .padding(.horizontal, 10).padding(.vertical, 7)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(selected ? Brand.accent.opacity(0.14) : .clear))
+        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(selected ? Theme.accentSelection : .clear))
         .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 }
@@ -103,8 +100,8 @@ struct EditorPane: View {
                     }
                 }
         }
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.card))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.line, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.editor, style: .continuous).fill(Theme.card))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.editor, style: .continuous).strokeBorder(Theme.line, lineWidth: 1))
         .padding(18)
         .onAppear { focused = true }
         .onChange(of: state.focusRequest) { _, _ in focused = true }
@@ -120,7 +117,7 @@ struct InsightPanel: View {
         VStack(alignment: .leading, spacing: 18) {
             section("Reconnu") {
                 HStack(spacing: 8) {
-                    Chip(state.text.isEmpty ? "Vide" : state.kind.label, icon: state.text.isEmpty ? "circle.dashed" : state.kind.icon, color: Brand.accent, filled: !state.text.isEmpty)
+                    Chip(state.text.isEmpty ? "Vide" : state.kind.label, icon: state.text.isEmpty ? "circle.dashed" : state.kind.icon, color: Theme.accent, filled: !state.text.isEmpty)
                     if state.kind == .color, let hex = ContentDetector.hexColor(state.text) {
                         RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color(hex: hex)).frame(width: 22, height: 22)
                             .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Theme.line))
@@ -137,7 +134,7 @@ struct InsightPanel: View {
                         ForEach(state.suggestions) { t in
                             Button { state.apply(t) } label: {
                                 HStack(spacing: 8) {
-                                    Image(systemName: t.icon).font(.system(size: 11, weight: .bold)).foregroundStyle(Brand.accent).frame(width: 16)
+                                    Image(systemName: t.icon).font(.system(size: 11, weight: .bold)).foregroundStyle(Theme.accent).frame(width: 16)
                                     Text(t.label).font(Theme.ui(12.5, weight: .medium)).foregroundStyle(Theme.ink)
                                     Spacer(minLength: 0)
                                 }
@@ -183,7 +180,7 @@ struct InsightPanel: View {
 
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(Theme.ui(11.5, weight: .bold)).foregroundStyle(Theme.inkFaint).textCase(.uppercase)
+            SectionHeader(title)
             content()
         }
     }
