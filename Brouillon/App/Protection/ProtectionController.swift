@@ -86,15 +86,12 @@ final class ProtectionController {
         guard !started else { return }
         started = true
         let count = (try? store.count()) ?? 0
-        switch ProtectionOnboarding.decide(state: state, draftCount: count) {
+        // Session sans mot de passe ni Touch ID, ou cle deja rangee : on propose au lieu d'activer.
+        switch ProtectionOnboarding.decide(state: state, draftCount: count,
+                                           canAuthenticate: authenticator.canAuthenticate,
+                                           keyAlreadyStored: keyStore.exists()) {
         case .enableByDefault:
-            // Une cle deja rangee (reinstallation, autre base) ne se lit qu'apres authentification :
-            // dans ce cas on propose au lieu d'activer.
-            if keyStore.exists() {
-                offersProtection = true
-            } else {
-                enableByDefault()
-            }
+            enableByDefault()
         case .offer:
             offersProtection = true
         case .none:

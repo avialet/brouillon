@@ -107,10 +107,16 @@ final class MemoryKeyStore: ProtectionKeyStore, @unchecked Sendable {
 
 /// Verification du proprietaire du Mac : Touch ID, ou mot de passe de la session.
 protocol OwnerAuthenticator: Sendable {
+    /// Le Mac sait-il verifier son proprietaire (mot de passe de session, Touch ID) ?
+    var canAuthenticate: Bool { get }
     func authenticate(reason: String) async throws
 }
 
 struct LocalOwnerAuthenticator: OwnerAuthenticator {
+    var canAuthenticate: Bool {
+        LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: nil)
+    }
+
     func authenticate(reason: String) async throws {
         let context = LAContext()
         var error: NSError?
@@ -123,5 +129,6 @@ struct LocalOwnerAuthenticator: OwnerAuthenticator {
 
 /// Mode capture : aucune demande a l'ecran.
 struct AcceptingAuthenticator: OwnerAuthenticator {
+    var canAuthenticate: Bool { true }
     func authenticate(reason: String) async throws {}
 }

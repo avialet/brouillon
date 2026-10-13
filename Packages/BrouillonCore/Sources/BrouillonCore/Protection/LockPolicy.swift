@@ -42,8 +42,12 @@ public enum ProtectionOnboarding: Equatable, Sendable {
     case enableByDefault
     case offer
 
-    public static func decide(state: ProtectionState, draftCount: Int) -> ProtectionOnboarding {
+    /// `canAuthenticate` : le Mac sait verifier son proprietaire (Touch ID ou mot de passe de session) ;
+    /// sinon activer d'office verrouillerait l'app sans issue. `keyAlreadyStored` : une cle est deja
+    /// dans le trousseau ; elle ne se lit qu'apres authentification, donc on propose.
+    public static func decide(state: ProtectionState, draftCount: Int, canAuthenticate: Bool = true,
+                              keyAlreadyStored: Bool = false) -> ProtectionOnboarding {
         guard state == .undecided else { return .none }
-        return draftCount == 0 ? .enableByDefault : .offer
+        return draftCount == 0 && canAuthenticate && !keyAlreadyStored ? .enableByDefault : .offer
     }
 }

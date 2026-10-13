@@ -30,6 +30,11 @@ let lockTests: (String, [Test]) = ("Lock", [
         expectEqual(ProtectionOnboarding.decide(state: .undecided, draftCount: 3), .offer, "base 0.1 / 0.2 : carte d'accueil")
         expectEqual(ProtectionOnboarding.decide(state: .on, draftCount: 3), .none)
         expectEqual(ProtectionOnboarding.decide(state: .off, draftCount: 0), .none)
+        expectEqual(ProtectionOnboarding.decide(state: .undecided, draftCount: 0, canAuthenticate: false), .offer,
+                    "session sans mot de passe : jamais verrouillee d'office sans issue")
+        expectEqual(ProtectionOnboarding.decide(state: .undecided, draftCount: 0, keyAlreadyStored: true), .offer,
+                    "cle deja rangee : elle ne se lit qu'apres authentification")
+        expectEqual(ProtectionOnboarding.decide(state: .on, draftCount: 0, canAuthenticate: false), .none)
     },
 ])
 
