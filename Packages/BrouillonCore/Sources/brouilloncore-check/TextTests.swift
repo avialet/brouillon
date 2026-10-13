@@ -95,6 +95,14 @@ let draftTests: (String, [Test]) = ("Drafts", [
         expectEqual(try store.list().map(\.id), [b.id])
         expectEqual(try store.draft(b.id)?.text, "Second")
     },
+    Test("unchangedTextIsNotRewritten") {
+        let store = DraftStore(database: try AppDatabase.inMemory())
+        let a = try store.save(id: nil, text: "Texte", now: t0)!
+        let again = try store.save(id: a.id, text: "Texte", now: t0.addingTimeInterval(60))!
+        expectEqual(again.updatedAt, t0, "ouvrir un brouillon ne le remonte pas en tete")
+        expectEqual(try store.draft(a.id)?.updatedAt, t0)
+        expectEqual(try store.count(), 1)
+    },
     Test("titleSkipsTinyFirstLines") {
         expectEqual(Draft.title(for: "{\n  \"a\" : 1,\n  \"b\" : 2\n}"), "{ \"a\" : 1, \"b\" : 2 }")
         expectEqual(Draft.title(for: "- \nListe de courses\nlait"), "- Liste de courses lait")

@@ -114,6 +114,8 @@ public final class DraftStore: Sendable {
         return try database.write { db in
             let sealing = try Self.sealingKey(currentKey, in: db)
             if let id, let existing = try DraftRecord.fetchOne(db, key: id) {
+                // Texte identique (brouillon simplement ouvert) : rien a ecrire, la date reste.
+                if let current = try? Self.draft(existing, key: sealing ?? currentKey), current.text == text { return current }
                 let draft = Draft(id: id, text: text, title: Draft.title(for: text), createdAt: existing.createdAt, updatedAt: now)
                 try Self.record(draft, sealing: sealing).update(db)
                 return draft
@@ -129,6 +131,11 @@ public final class DraftStore: Sendable {
         return try database.read { db in
             try DraftRecord.order(Column("updatedAt").desc).fetchAll(db).map { try Self.draft($0, key: currentKey) }
         }
+    }
+
+    /// Nombre de brouillons, sans rien dechiffrer.
+    public func count() throws -> Int {
+        try database.read { db in try DraftRecord.fetchCount(db) }
     }
 
     public func draft(_ id: String) throws -> Draft? {
