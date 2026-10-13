@@ -64,6 +64,7 @@ Le seul échange réseau de Brouillon est cette lecture de la version publiée. 
 - L'icône de la barre des menus crée un brouillon, colle dans un nouveau brouillon, ou rouvre les derniers.
 - Le lien `brouillon://new?text=…` crée un brouillon prérempli, pour un script ou un lanceur.
 - Fermer la fenêtre ne quitte pas l'app : le raccourci et l'icône de la barre des menus restent actifs. **⌘Q** quitte vraiment.
+- **Brouillon › À propos de Brouillon** affiche la version, la licence et les liens vers le site et le code source.
 
 | Famille | Transformations |
 |---|---|
@@ -98,12 +99,12 @@ make release   # fabrique build/Brouillon-X.Y.Z.dmg et son empreinte
 | Dossier | Contenu |
 |---|---|
 | `Packages/BrouillonCore` | Noyau sans interface : transformations, statistiques, suggestions, brouillons SQLite ([GRDB](https://github.com/groue/GRDB.swift)) |
-| `Brouillon` | L'application SwiftUI ; `App/Brand.swift` porte son identité |
-| `scripts` | Assemblage de l'app, du DMG et de l'icône |
+| `Brouillon` | L'application SwiftUI ; `App/Brand.swift` porte son identité (nom, teintes, glyphe) |
+| `scripts` | Assemblage de l'app et du DMG habillé (`scripts/dmg`) ; l'icône vient de la plaque (`make icon`) |
 | `docs` | [Publier une version](docs/publier-une-version.md), [tests](docs/tests.md), notes de version |
 
-Le socle commun (mises à jour, thème, raccourci global, panneau flottant) vient de
-[VialetKit](https://github.com/avialet/vialetkit). Publier une version ne demande que de
+Le socle commun (identité, police des titres, thème, Réglages, À propos, mises à jour, raccourci
+global) vient de [VialetKit](https://github.com/avialet/vialetkit) 0.2. Publier une version ne demande que de
 modifier `VERSION` puis de pousser un tag `vX.Y.Z` : la CI construit et publie le DMG, et
 les utilisateurs reçoivent la mise à jour dans l'app.
 
