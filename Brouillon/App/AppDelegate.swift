@@ -6,14 +6,15 @@ import BrouillonCore
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         WindowSummoner.onFocus = { AppState.shared.requestFocus() }
+        #if DEBUG
+        // Mode capture : ni raccourci global, ni reseau.
+        if runSnapshotIfRequested() { return }
+        #endif
         HotKeyController.shared.start { WindowSummoner.toggle() }
         // Laisse l'app s'afficher avant le moindre appel reseau.
         DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
             MainActor.assumeIsolated { Updater.shared.checkAutomatically() }
         }
-        #if DEBUG
-        runSnapshotIfRequested()
-        #endif
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -43,43 +44,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 #if DEBUG
-/// Mode de verification sans ecran : `Brouillon -BrouillonSnapshot /chemin/base -BrouillonSnapshotSeed 1`
-/// (avec BROUILLON_DB_PATH vers une base jetable) cree des brouillons d'exemple, capture la fenetre, quitte.
+/// Mode capture sans ecran (voir SnapshotRunner) : `Brouillon -BrouillonSnapshot <dossier>
+/// [-BrouillonSnapshotSeed 1] [-BrouillonSnapshotAppearance dark] [-BrouillonSnapshotOnly a,b]
+/// [-BrouillonSnapshotSize 1000x720]`, avec BROUILLON_DB_PATH vers une base jetable. Ecrit
+/// `mainWindow`, `settings`, `about` et `transformation` (le JSON mis en forme ; `-sombre` en sombre)
+/// dans le dossier, puis quitte.
 extension AppDelegate {
-    func runSnapshotIfRequested() {
-        let defaults = UserDefaults.standard
-        guard let base = defaults.string(forKey: "BrouillonSnapshot") else { return }
-        Task { @MainActor in
-            let state = AppState.shared
-            if defaults.bool(forKey: "BrouillonSnapshotSeed") {
-                let now = Date()
-                _ = try? state.store.save(id: nil, text: "Relancer le fournisseur\n- devis signé ?\n- date de livraison\n- numéro de suivi", now: now.addingTimeInterval(-86400 * 2))
-                _ = try? state.store.save(id: nil, text: "https://vialet.app/?utm_source=newsletter&utm_campaign=rentr%C3%A9e%202026", now: now.addingTimeInterval(-3600 * 5))
-                state.reload()
-                state.newDraft()
-                state.text = "{\"name\":\"Brouillon\",\"version\":\"0.1.0\",\"tags\":[\"mac\",\"local\"],\"author\":{\"name\":\"Camille\",\"city\":\"Lyon\"}}"
-                state.flushSave()
-            }
-            try? await Task.sleep(for: .seconds(2))
-            await applySnapshotSize(defaults)
-            if let window = WindowSummoner.mainWindow { try? WindowSnapshot.write(window, to: URL(fileURLWithPath: base + "-1.png")) }
+    func runSnapshotIfRequested() -> Bool {
+        guard SnapshotRequest.parse(prefix: Brand.name, arguments: CommandLine.arguments) != nil else { return false }
+        let state = AppState.shared
+        if UserDefaults.standard.bool(forKey: Brand.key("SnapshotSeed")) { seed(state) }
+        let standard = SnapshotRunner.standardScenarios(mainWindow: { WindowSummoner.mainWindow }, identity: Brand.identity)
+        let transformation = SnapshotScenario("transformation") {
             state.apply(.prettyJSON)
-            try? await Task.sleep(for: .seconds(1))
-            if let window = WindowSummoner.mainWindow { try? WindowSnapshot.write(window, to: URL(fileURLWithPath: base + "-2.png")) }
-            print("kind: \(state.kind), suggestions: \(state.suggestions.map(\.rawValue)), drafts: \(state.drafts.count)")
-            NSApp.terminate(nil)
+            try await Task.sleep(for: .seconds(1))
+            return WindowSummoner.mainWindow
         }
+        return SnapshotRunner.runIfRequested(prefix: Brand.name, scenarios: standard + [transformation])
     }
 
-    /// `-BrouillonSnapshotSize 1000x720` : taille de contenu (points) de la fenetre principale avant capture.
-    func applySnapshotSize(_ defaults: UserDefaults) async {
-        guard let spec = defaults.string(forKey: "BrouillonSnapshotSize") else { return }
-        let parts = spec.lowercased().split(separator: "x").compactMap { Double($0) }
-        guard parts.count == 2, parts.allSatisfy({ $0 > 0 }), let window = WindowSummoner.mainWindow else { return }
-        window.setContentSize(NSSize(width: parts[0], height: parts[1]))
-        window.contentView?.layoutSubtreeIfNeeded()
-        // Un tour de boucle pour que SwiftUI refasse la disposition.
-        try? await Task.sleep(for: .milliseconds(500))
+    /// Exemples neutres pour les captures, sans donnee personnelle (chaines en echappements ASCII).
+    private func seed(_ state: AppState) {
+        let now = Date()
+        let samples: [(String, TimeInterval)] = [
+            ("Relancer le fournisseur\n- devis sign\u{00E9} ?\n- date de livraison\n- num\u{00E9}ro de suivi", -86400 * 2),
+            ("https://vialet.app/?utm_source=newsletter&utm_campaign=rentr%C3%A9e%202026", -3600 * 5),
+        ]
+        for (text, age) in samples { _ = try? state.store.save(id: nil, text: text, now: now.addingTimeInterval(age)) }
+        state.reload()
+        state.newDraft()
+        state.text = "{\"name\":\"Brouillon\",\"version\":\"0.2.0\",\"tags\":[\"mac\",\"local\"],\"author\":{\"name\":\"Camille\",\"city\":\"Lyon\"}}"
+        state.flushSave()
     }
 }
 #endif
