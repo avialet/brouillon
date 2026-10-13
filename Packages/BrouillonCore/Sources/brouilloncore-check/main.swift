@@ -6,4 +6,5 @@ run([
     statsTests,
     suggestionTests,
     draftTests,
+    notesHTMLTests,
 ])
