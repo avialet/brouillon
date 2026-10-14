@@ -6,8 +6,9 @@ import VialetKit
 struct SettingsView: View {
     var body: some View {
         SettingsScreen(app: Brand.identity, hotKey: HotKeyController.shared, updater: Updater.shared,
-                       menuBar: MenuBarPresence.shared,
-                       hotKeyHint: "Depuis n'importe quelle app : ouvre \(Brand.displayName) avec le curseur dans le texte, ou le masque.") {
+                       menuBar: MenuBarPresence.shared, dock: DockPresence.shared,
+                       hotKeyHint: "Depuis n'importe quelle app : ouvre \(Brand.displayName) avec le curseur dans le texte, ou le masque.",
+                       updateNote: HubPresence.updateNote) {
             ProtectionSettingsCard()
         }
     }

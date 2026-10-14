@@ -37,6 +37,8 @@
 	<string>public.app-category.utilities</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>26.0</string>
+	<key>LSUIElement</key>
+	<true/>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Brouillon lit vos notes dans l&#x2019;app Notes pour les importer, sans jamais les modifier.</string>
 	<key>NSHumanReadableCopyright</key>
